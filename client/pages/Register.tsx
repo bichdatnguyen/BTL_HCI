@@ -15,7 +15,10 @@ export default function Register() {
     // Handle registration logic here
   };
 
-  const handlePasswordChange = (field: "password" | "confirm", value: string) => {
+  const handlePasswordChange = (
+    field: "password" | "confirm",
+    value: string,
+  ) => {
     const newPasswords = { ...passwords, [field]: value };
     setPasswords(newPasswords);
     if (field === "confirm" || (field === "password" && passwords.confirm)) {
@@ -64,7 +67,9 @@ export default function Register() {
                 className="w-full bg-background rounded-3xl px-6 py-4 text-lg font-medium text-foreground placeholder-muted-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary transition-all"
                 aria-label="Mật khẩu"
                 value={passwords.password}
-                onChange={(e) => handlePasswordChange("password", e.target.value)}
+                onChange={(e) =>
+                  handlePasswordChange("password", e.target.value)
+                }
                 required
               />
             </div>
@@ -82,7 +87,9 @@ export default function Register() {
                 }`}
                 aria-label="Nhập lại mật khẩu"
                 value={passwords.confirm}
-                onChange={(e) => handlePasswordChange("confirm", e.target.value)}
+                onChange={(e) =>
+                  handlePasswordChange("confirm", e.target.value)
+                }
                 required
               />
               {!passwordsMatch && (
