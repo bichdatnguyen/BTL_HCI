@@ -7,10 +7,12 @@ export default function Login() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Handle login logic here
+    navigate("/profile-selection");
   };
 
   const handleGoogleLogin = () => {
     // Handle Google login logic here
+    navigate("/profile-selection");
   };
 
   return (
