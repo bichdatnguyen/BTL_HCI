@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"; // Thêm useEffect nếu muốn đồng bộ
+import { useState } from "react";
 import { Check } from "lucide-react";
 import { UserAvatar } from "./UserAvatar";
 import { StreakBadge } from "./StreakBadge";
@@ -16,37 +16,26 @@ export function TopHeader({
   onCheckIn,
 }: TopHeaderProps) {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
-
-  // 1. Tạo state mới để quản lý số hiển thị, khởi tạo bằng giá trị prop truyền vào
-  const [displayStreak, setDisplayStreak] = useState(streakCount);
-
-  // (Tùy chọn) Nếu component cha cập nhật streakCount mới, cập nhật lại state hiển thị
-  useEffect(() => {
-    setDisplayStreak(streakCount);
-  }, [streakCount]);
-
+ 
   const handleCheckIn = () => {
-    // Ngăn chặn click nhiều lần nếu đã điểm danh
-    if (isCheckedIn) return;
-
     setIsCheckedIn(true);
-
-    // 2. Tăng giá trị hiển thị lên 1
-    setDisplayStreak((prev) => prev + 1);
-
-    // Gọi hàm callback để báo cho component cha (nếu cần lưu vào database)
     onCheckIn?.();
   };
+
+  const currentStreakDisplay = isCheckedIn ? streakCount + 1 : streakCount;
 
   return (
     <header className="bg-background border-b border-border fixed top-0 right-0 left-32 z-40 shadow-sm">
       <div className="h-20 px-8 flex items-center justify-end">
+        {/* User Profile Area */}
         <div className="flex items-center gap-6">
+          {/* Avatar */}
           <UserAvatar initials={userName} size="md" />
 
-          {/* 3. Sử dụng displayStreak thay vì streakCount */}
-          <StreakBadge count={displayStreak} />
+          {/* Streak Badge */}
+          <StreakBadge count={currentStreakDisplay />
 
+          {/* Check-in Button */}
           <button
             onClick={handleCheckIn}
             disabled={isCheckedIn}
@@ -60,6 +49,7 @@ export function TopHeader({
           >
             {isCheckedIn && <Check className="w-4 h-4" aria-hidden="true" />}
             <span>{isCheckedIn ? "Đã điểm danh" : "Điểm danh"}</span>
+            
           </button>
         </div>
       </div>
