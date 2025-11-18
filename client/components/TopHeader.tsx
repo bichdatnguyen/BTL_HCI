@@ -31,7 +31,8 @@ export function TopHeader({
           <UserAvatar initials={userName} size="md" />
 
           {/* Streak Badge */}
-          <StreakBadge count={streakCount + 1} />
+
+          
 
           {/* Check-in Button */}
           <button
@@ -47,6 +48,7 @@ export function TopHeader({
           >
             {isCheckedIn && <Check className="w-4 h-4" aria-hidden="true" />}
             <span>{isCheckedIn ? "Đã điểm danh" : "Điểm danh"}</span>
+            <StreakBadge count={streakCount} />
           </button>
         </div>
       </div>
