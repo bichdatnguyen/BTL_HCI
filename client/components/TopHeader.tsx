@@ -31,7 +31,7 @@ export function TopHeader({
           <UserAvatar initials={userName} size="md" />
 
           {/* Streak Badge */}
-          <StreakBadge count={streakCount} />
+          <StreakBadge count={streakCount + 1} />
 
           {/* Check-in Button */}
           <button
