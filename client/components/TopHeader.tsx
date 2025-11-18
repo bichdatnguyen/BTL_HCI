@@ -17,10 +17,15 @@ export function TopHeader({
 }: TopHeaderProps) {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
 
+  const [displayStreak, setDisplayStreak] = useState(streakCount);
+  useEffect(() => {
+    setDisplayStreak(streakCount)
+  }, [streakCount]);
+
   const handleCheckIn = () => {
     setIsCheckedIn(true);
+    setDisplayStreak((prev) => prev + 1);
     onCheckIn?.();
-    streakCount = streakCount + 1
   };
 
   return (
@@ -32,8 +37,7 @@ export function TopHeader({
           <UserAvatar initials={userName} size="md" />
 
           {/* Streak Badge */}
-          
-          <StreakBadge count={streakCount} />
+          <StreakBadge count={displayStreak} />
 
           {/* Check-in Button */}
           <button
