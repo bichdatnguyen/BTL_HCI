@@ -19,7 +19,6 @@ export function TopHeader({
  
   const handleCheckIn = () => {
     setIsCheckedIn(true);
-    
     onCheckIn?.();
   };
 
