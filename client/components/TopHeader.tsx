@@ -22,7 +22,7 @@ export function TopHeader({
     onCheckIn?.();
   };
 
-  const currentStreakDisplay = isCheckedIn ? streakCount + 1 : streakCount;
+  const currentStreakDisplay = isCheckedIn ? Number(streakCount) + 1 : streakCount;
 
   return (
     <header className="bg-background border-b border-border fixed top-0 right-0 left-32 z-40 shadow-sm">
