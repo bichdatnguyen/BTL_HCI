@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Sidebar } from "@/components/Sidebar";
 import { PageHeader } from "@/components/PageHeader";
 import { HeaderProvider, usePageHeader } from "@/contexts/HeaderContext";
+import { ProfileProvider } from "@/contexts/ProfileContext";
 import Index from "./pages/Index";
 import Games from "./pages/Games";
 import Library from "./pages/Library";
@@ -16,6 +17,8 @@ import WordMatching from "./pages/WordMatching";
 import WordSearch from "./pages/WordSearch";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ProfileSelection from "./pages/ProfileSelection";
+import ManageProfiles from "./pages/ManageProfiles";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -56,62 +59,73 @@ export default function App() {
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <HeaderProvider>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route
-                path="/"
-                element={
-                  <Layout>
-                    <Index />
-                  </Layout>
-                }
-              />
-              <Route
-                path="/games/matching"
-                element={
-                  <Layout>
-                    <WordMatching />
-                  </Layout>
-                }
-              />
-              <Route
-                path="/games/word-search"
-                element={
-                  <Layout>
-                    <WordSearch />
-                  </Layout>
-                }
-              />
-              <Route
-                path="/games"
-                element={
-                  <Layout>
-                    <Games />
-                  </Layout>
-                }
-              />
-              <Route
-                path="/library"
-                element={
-                  <Layout>
-                    <Library />
-                  </Layout>
-                }
-              />
-              <Route
-                path="/library/category/:categoryId"
-                element={
-                  <Layout>
-                    <CategoryView />
-                  </Layout>
-                }
-              />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </HeaderProvider>
+          <ProfileProvider>
+            <HeaderProvider>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/profile-selection" element={<ProfileSelection />} />
+                <Route
+                  path="/manage-profiles"
+                  element={
+                    <Layout>
+                      <ManageProfiles />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/"
+                  element={
+                    <Layout>
+                      <Index />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/games/matching"
+                  element={
+                    <Layout>
+                      <WordMatching />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/games/word-search"
+                  element={
+                    <Layout>
+                      <WordSearch />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/games"
+                  element={
+                    <Layout>
+                      <Games />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/library"
+                  element={
+                    <Layout>
+                      <Library />
+                    </Layout>
+                  }
+                />
+                <Route
+                  path="/library/category/:categoryId"
+                  element={
+                    <Layout>
+                      <CategoryView />
+                    </Layout>
+                  }
+                />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </HeaderProvider>
+          </ProfileProvider>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
