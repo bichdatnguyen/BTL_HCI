@@ -21,7 +21,7 @@ export function TopHeader({
     setIsCheckedIn(true);
     onCheckIn?.();
   };
-
+  const newCount = isCheckedIn ? streakCount + 1 : streakCount;
   return (
     <header className="bg-background border-b border-border fixed top-0 right-0 left-32 z-40 shadow-sm">
       <div className="h-20 px-8 flex items-center justify-end">
@@ -31,7 +31,7 @@ export function TopHeader({
           <UserAvatar initials={userName} size="md" />
 
           {/* Streak Badge */}
-          <StreakBadge count={streakCount} />
+          <StreakBadge count={newCount} />
 
           {/* Check-in Button */}
           <button
