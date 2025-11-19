@@ -16,11 +16,13 @@ export function TopHeader({
   onCheckIn,
 }: TopHeaderProps) {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
-
+ 
   const handleCheckIn = () => {
     setIsCheckedIn(true);
     onCheckIn?.();
   };
+
+  const currentStreakDisplay = isCheckedIn ? Number(streakCount) + 1 : streakCount;
 
   return (
     <header className="bg-background border-b border-border fixed top-0 right-0 left-32 z-40 shadow-sm">
@@ -31,7 +33,7 @@ export function TopHeader({
           <UserAvatar initials={userName} size="md" />
 
           {/* Streak Badge */}
-          <StreakBadge count={streakCount} />
+          <StreakBadge count={currentStreakDisplay} />
 
           {/* Check-in Button */}
           <button
@@ -47,6 +49,7 @@ export function TopHeader({
           >
             {isCheckedIn && <Check className="w-4 h-4" aria-hidden="true" />}
             <span>{isCheckedIn ? "Đã điểm danh" : "Điểm danh"}</span>
+            
           </button>
         </div>
       </div>
