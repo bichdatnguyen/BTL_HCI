@@ -9,7 +9,7 @@ const sidebarItems = [
     icon: Home,
   },
   {
-    label: "Trò chơi",
+    label: "Luyện tập",
     path: "/games",
     icon: Gamepad2,
   },

@@ -1,16 +1,48 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect } from "react";
+import { useState } from "react";
 
 export default function Login() {
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // 1. Khai báo state để lưu dữ liệu nhập và lỗi
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
+    setError(""); // Xóa lỗi cũ nếu có
+
+    try {
+      // 2. Gọi API đăng nhập (Lưu ý cổng 5000)
+      const response = await fetch("http://localhost:5000/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // 3. Đăng nhập thành công
+        // Lưu userId vào bộ nhớ trình duyệt để dùng cho các trang sau
+        localStorage.setItem("userId", data.userId);
+
+        // Chuyển hướng sang trang chọn hồ sơ
+        navigate("/profile-selection");
+      } else {
+        // Hiển thị lỗi từ server trả về (ví dụ: Sai mật khẩu)
+        setError(data.message || "Đăng nhập thất bại");
+      }
+    } catch (err) {
+      setError("Không thể kết nối đến Server. Vui lòng kiểm tra lại.");
+      console.error(err);
+    }
   };
 
   const handleGoogleLogin = () => {
-    // Handle Google login logic here
+    // Xử lý login Google sau
+    navigate("/profile-selection");
   };
 
   return (
@@ -35,6 +67,10 @@ export default function Login() {
                 placeholder="Nhập tên đăng nhập của bạn"
                 className="w-full bg-background rounded-3xl px-6 py-4 text-lg font-medium text-foreground placeholder-muted-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary transition-all"
                 aria-label="Tên đăng nhập"
+                // Gắn state vào input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
               />
             </div>
 
@@ -48,8 +84,19 @@ export default function Login() {
                 placeholder="Nhập mật khẩu của bạn"
                 className="w-full bg-background rounded-3xl px-6 py-4 text-lg font-medium text-foreground placeholder-muted-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary transition-all"
                 aria-label="Mật khẩu"
+                // Gắn state vào input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
               />
             </div>
+
+            {/* Hiển thị thông báo lỗi nếu có */}
+            {error && (
+              <div className="text-red-500 text-center font-medium bg-red-50 p-3 rounded-xl border border-red-200">
+                {error}
+              </div>
+            )}
 
             {/* Login Button */}
             <button

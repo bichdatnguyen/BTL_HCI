@@ -3,16 +3,48 @@ import { useState } from "react";
 
 export default function Register() {
   const navigate = useNavigate();
+
+  // 1. Thêm state cho username và thông báo lỗi
+  const [username, setUsername] = useState("");
   const [passwords, setPasswords] = useState({ password: "", confirm: "" });
   const [passwordsMatch, setPasswordsMatch] = useState(true);
+  const [error, setError] = useState(""); // State để lưu lỗi từ server trả về
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(""); // Xóa lỗi cũ trước khi gửi mới
+
+    // Kiểm tra mật khẩu trùng khớp
     if (passwords.password !== passwords.confirm) {
       setPasswordsMatch(false);
       return;
     }
-    // Handle registration logic here
+
+    try {
+      // 2. Gọi API xuống Server (Lưu ý cổng 5000)
+      const response = await fetch("http://localhost:5000/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: username,
+          password: passwords.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Nếu đăng ký thành công
+        alert("Đăng ký thành công! Hãy đăng nhập ngay.");
+        navigate("/login");
+      } else {
+        // Nếu lỗi (ví dụ: Tên đăng nhập đã tồn tại)
+        setError(data.message || "Đăng ký thất bại");
+      }
+    } catch (err) {
+      setError("Không thể kết nối đến Server. Hãy kiểm tra lại.");
+      console.error(err);
+    }
   };
 
   const handlePasswordChange = (
@@ -27,7 +59,7 @@ export default function Register() {
   };
 
   const handleGoogleSignup = () => {
-    // Handle Google signup logic here
+    // Xử lý logic đăng ký Google sau
   };
 
   return (
@@ -53,6 +85,9 @@ export default function Register() {
                 className="w-full bg-background rounded-3xl px-6 py-4 text-lg font-medium text-foreground placeholder-muted-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary transition-all"
                 aria-label="Tên đăng nhập"
                 required
+                // 3. Gắn state vào input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
               />
             </div>
 
@@ -82,9 +117,8 @@ export default function Register() {
               <input
                 type="password"
                 placeholder="Nhập lại mật khẩu của bạn"
-                className={`w-full bg-background rounded-3xl px-6 py-4 text-lg font-medium text-foreground placeholder-muted-foreground border-2 focus:outline-none focus:ring-2 focus:ring-primary transition-all ${
-                  !passwordsMatch ? "border-destructive" : "border-border"
-                }`}
+                className={`w-full bg-background rounded-3xl px-6 py-4 text-lg font-medium text-foreground placeholder-muted-foreground border-2 focus:outline-none focus:ring-2 focus:ring-primary transition-all ${!passwordsMatch ? "border-destructive" : "border-border"
+                  }`}
                 aria-label="Nhập lại mật khẩu"
                 value={passwords.confirm}
                 onChange={(e) =>
@@ -98,6 +132,13 @@ export default function Register() {
                 </p>
               )}
             </div>
+
+            {/* 4. Hiển thị lỗi từ Server (nếu có) */}
+            {error && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-center">
+                <span className="block sm:inline">{error}</span>
+              </div>
+            )}
 
             {/* Signup Button */}
             <button

@@ -35,7 +35,7 @@ const games = [
 
 export default function Games() {
   useSetPageHeader({
-    title: "🎮 Trò chơi",
+    title: "🎮 Luyện tập",
     subtitle: "Chọn một trò chơi để bắt đầu học!",
     userName: "T",
     streakCount: 5,
