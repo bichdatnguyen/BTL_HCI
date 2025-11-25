@@ -2,6 +2,7 @@ import { User } from "lucide-react";
 
 interface UserAvatarProps {
   initials?: string;
+  avatar?: string;
   icon?: React.ReactNode;
   size?: "sm" | "md" | "lg";
 }
@@ -18,8 +19,16 @@ const iconSizeMap = {
   lg: "w-6 h-6",
 };
 
+const emojiSizeMap = {
+  sm: "text-lg",
+  md: "text-2xl",
+  lg: "text-3xl",
+};
+
+
 export function UserAvatar({
   initials = "T",
+  avatar,
   icon,
   size = "md",
 }: UserAvatarProps) {
@@ -27,7 +36,9 @@ export function UserAvatar({
     <div
       className={`${sizeMap[size]} rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold shadow-sm`}
     >
-      {icon ? (
+      {avatar ? (
+        <div className={emojiSizeMap[size]}>{avatar}</div>
+      ) : icon ? (
         <div className={iconSizeMap[size]}>{icon}</div>
       ) : (
         initials

@@ -5,6 +5,8 @@ export interface Profile {
   name: string;
   avatar: string;
   initials: string;
+  birthday?: string;
+  username?: string;
 }
 
 interface ProfileContextType {
@@ -13,6 +15,7 @@ interface ProfileContextType {
   selectProfile: (profile: Profile) => void;
   addProfile: (profile: Profile) => void;
   removeProfile: (id: string) => void;
+  updateProfile: (profile: Profile) => void;
 }
 
 const ProfileContext = createContext<ProfileContextType | undefined>(undefined);
@@ -60,13 +63,21 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateProfile = (updatedProfile: Profile) => {
+    setProfiles(profiles.map((p) => (p.id === updatedProfile.id ? updatedProfile : p)));
+    if (selectedProfile?.id === updatedProfile.id) {
+      setSelectedProfile(updatedProfile);
+    }
+  };
+
+
   return (
     <ProfileContext.Provider
-      value={{ profiles, selectedProfile, selectProfile, addProfile, removeProfile }}
+      value={{ profiles, selectedProfile, selectProfile, addProfile, removeProfile, updateProfile }}
     >
       {children}
     </ProfileContext.Provider>
-  );
+  )
 }
 
 export function useProfile() {

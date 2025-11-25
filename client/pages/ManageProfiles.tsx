@@ -2,159 +2,186 @@ import { useNavigate } from "react-router-dom";
 import { useProfile } from "@/contexts/ProfileContext";
 import { useSetPageHeader } from "@/contexts/HeaderContext";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus } from "lucide-react";
-import { useState } from "react";
+import { LogOut } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
-const AVATAR_OPTIONS = ["🐶", "🐱", "🐰", "🐻", "🐼", "🐨", "🐯", "🦁"];
+const AVATAR_OPTIONS = ["🐶", "🐱", "🐰", "🐻", "🐨", "🐯", "🦁"];
 
 export default function ManageProfiles() {
   const navigate = useNavigate();
-  const { profiles, selectedProfile, addProfile, removeProfile } = useProfile();
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newProfileName, setNewProfileName] = useState("");
-  const [selectedAvatar, setSelectedAvatar] = useState("🐶");
+  const { selectedProfile, updateProfile } = useProfile();
+  const { toast } = useToast();
+  const [isAvatarPickerOpen, setIsAvatarPickerOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: selectedProfile?.name || "",
+    avatar: selectedProfile?.avatar || "🐶",
+    birthday: selectedProfile?.birthday || "",
+  });
 
   useSetPageHeader({
-    title: "Quản lý hồ sơ",
-    subtitle: "Quản lý hồ sơ của các bé",
+    title: "Hồ sơ của tớ",
+    subtitle: "",
     userName: selectedProfile?.initials || "T",
+    userAvatar: selectedProfile?.avatar,
     streakCount: 5,
   });
 
-  const handleAddProfile = () => {
-    if (newProfileName.trim()) {
-      const newProfile = {
-        id: Date.now().toString(),
-        name: newProfileName,
-        avatar: selectedAvatar,
-        initials: newProfileName.charAt(0).toUpperCase(),
+  // Sync form data when profile updates
+  useEffect(() => {
+    if (selectedProfile) {
+      setFormData({
+        name: selectedProfile.name || "",
+        avatar: selectedProfile.avatar || "🐶",
+        birthday: selectedProfile.birthday || "",
+      });
+    }
+  }, [selectedProfile?.id]);
+
+  const handleAvatarSelect = (avatar: string) => {
+    setFormData({ ...formData, avatar });
+    setIsAvatarPickerOpen(false);
+  };
+
+  const handleSave = () => {
+    if (selectedProfile) {
+      const updatedProfile = {
+        ...selectedProfile,
+        name: formData.name,
+        avatar: formData.avatar,
+        birthday: formData.birthday,
+        initials: formData.name.charAt(0).toUpperCase(),
       };
-      addProfile(newProfile);
-      setNewProfileName("");
-      setSelectedAvatar("🐶");
-      setIsAddDialogOpen(false);
+      updateProfile(updatedProfile);
+
+
+      // Dispatch custom event to notify other components about profile update
+      const event = new CustomEvent('user-updated', {
+        detail: { profile: updatedProfile }
+      });
+      window.dispatchEvent(event);
+
+      toast({
+        title: "Thành công!",
+        description: "Hồ sơ của bạn đã được cập nhật.",
+      });
     }
   };
 
-  const handleRemoveProfile = (id: string) => {
-    if (profiles.length > 1) {
-      removeProfile(id);
-    }
+  const handleLogout = () => {
+    navigate("/login");
   };
 
   return (
-    <div className="animate-fade-in max-w-4xl">
-      {/* Profiles Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {profiles.map((profile) => (
-          <div
-            key={profile.id}
-            className="bg-card rounded-2xl border-2 border-border p-6 flex items-center justify-between hover:border-primary transition-colors"
-          >
-            <div className="flex items-center gap-4">
-              <div className="text-4xl">{profile.avatar}</div>
-              <div>
-                <h3 className="font-bold text-lg text-foreground">
-                  {profile.name}
-                </h3>
-                {profile.id === selectedProfile?.id && (
-                  <p className="text-sm text-primary font-semibold">
-                    Đang hoạt động
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <button
-              onClick={() => handleRemoveProfile(profile.id)}
-              disabled={profiles.length === 1}
-              className="p-2 rounded-lg hover:bg-destructive/10 text-destructive disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              aria-label={`Delete ${profile.name}`}
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
+    <div className="animate-fade-in min-h-screen flex items-center justify-center py-12">
+      {/* Main Card */}
+      <div className="w-full max-w-md bg-card rounded-3xl shadow-lg p-8">
+        {/* Avatar Section */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-32 h-32 bg-muted rounded-full mb-4 text-6xl">
+            {formData.avatar}
           </div>
-        ))}
+          <button
+            onClick={() => setIsAvatarPickerOpen(true)}
+            className="text-primary font-semibold hover:opacity-80 transition-opacity"
+          >
+            Đổi ảnh đại diện
+          </button>
+        </div>
+
+        {/* Form Fields */}
+        <div className="space-y-6">
+          {/* Name Field */}
+          <div>
+            <label className="block text-sm font-semibold text-foreground mb-2">
+              Tên của tớ
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              className="w-full bg-background rounded-2xl px-6 py-3 text-lg font-medium text-foreground placeholder-muted-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+              placeholder="Nhập tên của tớ"
+            />
+          </div>
+
+          {/* Birthday Field */}
+          <div>
+            <label className="block text-sm font-semibold text-foreground mb-2">
+              Ngày sinh nhật
+            </label>
+            <input
+              type="date"
+              value={formData.birthday}
+              onChange={(e) =>
+                setFormData({ ...formData, birthday: e.target.value })
+              }
+              className="w-full bg-background rounded-2xl px-6 py-3 text-lg font-medium text-foreground border border-border focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+            />
+          </div>
+
+          {/* Username Field (Read-only) */}
+          <div>
+            <label className="block text-sm font-semibold text-foreground mb-2">
+              Tên đăng nhập
+            </label>
+            <input
+              type="text"
+              value={selectedProfile?.username || "bi_bi_2015"}
+              disabled
+              className="w-full bg-muted rounded-2xl px-6 py-3 text-lg font-medium text-muted-foreground border border-border cursor-not-allowed"
+            />
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="space-y-3 mt-8">
+          <Button
+            onClick={handleSave}
+            className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-2xl font-bold text-lg"
+          >
+            Lưu thay đổi
+          </Button>
+          <Button
+            onClick={handleLogout}
+            variant="outline"
+            className="w-full border-destructive text-destructive hover:bg-destructive/10 py-3 rounded-2xl font-bold text-lg"
+          >
+            <LogOut className="w-5 h-5 mr-2" />
+            Đăng xuất
+          </Button>
+        </div>
       </div>
 
-      {/* Add Profile Button */}
-      <div className="flex justify-center">
-        <Button
-          onClick={() => setIsAddDialogOpen(true)}
-          size="lg"
-          className="gap-2"
-        >
-          <Plus className="w-5 h-5" />
-          Thêm hồ sơ mới
-        </Button>
-      </div>
-
-      {/* Add Profile Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+      {/* Avatar Picker Dialog */}
+      <Dialog open={isAvatarPickerOpen} onOpenChange={setIsAvatarPickerOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Thêm bé mới</DialogTitle>
+            <DialogTitle className="text-2xl">Chọn ảnh đại diện</DialogTitle>
           </DialogHeader>
-
-          <div className="space-y-6">
-            {/* Name Input */}
-            <div>
-              <label className="block text-sm font-semibold text-foreground mb-2">
-                Tên bé
-              </label>
-              <Input
-                placeholder="Nhập tên bé"
-                value={newProfileName}
-                onChange={(e) => setNewProfileName(e.target.value)}
-                className="text-lg"
-              />
-            </div>
-
-            {/* Avatar Selection */}
-            <div>
-              <label className="block text-sm font-semibold text-foreground mb-3">
-                Chọn hình đại diện
-              </label>
-              <div className="grid grid-cols-4 gap-3">
-                {AVATAR_OPTIONS.map((avatar) => (
-                  <button
-                    key={avatar}
-                    onClick={() => setSelectedAvatar(avatar)}
-                    className={`p-4 text-3xl rounded-lg border-2 transition-all ${
-                      selectedAvatar === avatar
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary"
-                    }`}
-                  >
-                    {avatar}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div className="grid grid-cols-4 gap-4">
+            {AVATAR_OPTIONS.map((avatar) => (
+              <button
+                key={avatar}
+                onClick={() => handleAvatarSelect(avatar)}
+                className={`p-6 text-4xl rounded-2xl border-2 transition-all ${formData.avatar === avatar
+                    ? "border-primary bg-primary/10"
+                    : "border-border hover:border-primary"
+                  }`}
+              >
+                {avatar}
+              </button>
+            ))}
           </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsAddDialogOpen(false)}
-            >
-              Hủy
-            </Button>
-            <Button
-              onClick={handleAddProfile}
-              disabled={!newProfileName.trim()}
-            >
-              Thêm bé
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -5,7 +5,7 @@ export interface HeaderInfo {
   subtitle?: string;
   userName?: string;
   streakCount?: number;
-  onCheckIn?: () => void;
+  userAvatar?: string;
 }
 
 interface HeaderContextType {
@@ -36,12 +36,13 @@ export function useSetPageHeader(headerInfo: HeaderInfo) {
     title: headerInfo.title,
     subtitle: headerInfo.subtitle,
     userName: headerInfo.userName,
+    userAvatar: headerInfo.userAvatar,
     streakCount: headerInfo.streakCount,
   });
 
   useEffect(() => {
     context.setHeader(headerInfo);
-  }, [headerKey, headerInfo.onCheckIn]);
+  }, [headerKey]);
 }
 
 export function usePageHeader() {

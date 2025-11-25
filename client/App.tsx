@@ -17,7 +17,7 @@ import WordMatching from "./pages/WordMatching";
 import WordSearch from "./pages/WordSearch";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import ProfileSelection from "./pages/ProfileSelection";
+
 import ManageProfiles from "./pages/ManageProfiles";
 import NotFound from "./pages/NotFound";
 
@@ -37,8 +37,9 @@ function Layout({ children }: { children: React.ReactNode }) {
               title={header.title}
               subtitle={header.subtitle}
               userName={header.userName}
+              userAvatar={header.userAvatar}
               streakCount={header.streakCount}
-              onCheckIn={header.onCheckIn}
+
             />
           </div>
         )}
@@ -64,7 +65,6 @@ export default function App() {
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route path="/profile-selection" element={<ProfileSelection />} />
                 <Route
                   path="/manage-profiles"
                   element={

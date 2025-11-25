@@ -29,7 +29,7 @@ export default function Login() {
         localStorage.setItem("userId", data.userId);
 
         // Chuyển hướng sang trang chọn hồ sơ
-        navigate("/profile-selection");
+        navigate("/");
       } else {
         // Hiển thị lỗi từ server trả về (ví dụ: Sai mật khẩu)
         setError(data.message || "Đăng nhập thất bại");
@@ -42,7 +42,7 @@ export default function Login() {
 
   const handleGoogleLogin = () => {
     // Xử lý login Google sau
-    navigate("/profile-selection");
+    navigate("/");
   };
 
   return (
