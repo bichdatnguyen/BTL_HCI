@@ -15,7 +15,7 @@ export function PageHeader({
   subtitle,
   userName = "T",
   userAvatar,
-  streakCount = 5,
+  streakCount = 0,
 }: PageHeaderProps) {
 
   return (
