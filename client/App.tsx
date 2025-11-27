@@ -17,6 +17,7 @@ import WordMatching from "./pages/WordMatching";
 import WordSearch from "./pages/WordSearch";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import BookReader from "./pages/BookReader";
 
 import ManageProfiles from "./pages/ManageProfiles";
 import NotFound from "./pages/NotFound";
@@ -113,14 +114,10 @@ export default function App() {
                     </Layout>
                   }
                 />
-                <Route
-                  path="/library/category/:categoryId"
-                  element={
-                    <Layout>
-                      <CategoryView />
-                    </Layout>
-                  }
-                />
+
+                <Route path="/read/:bookId" element={<BookReader />} />
+
+                <Route path="/category/:categoryName" element={<CategoryView />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

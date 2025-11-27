@@ -1,95 +1,56 @@
-import { DashboardCard, DashboardSection } from "./DashboardCard";
-import { Heart } from "lucide-react";
+import { useEffect, useState } from "react";
+import { DashboardSection } from "./DashboardCard"; // Giữ lại khung section
+import { BookCard } from "./BookCard"; // Dùng BookCard mới để hiện ảnh
 
 interface Book {
-  id: string;
+  _id: string;
   title: string;
+  coverUrl: string;
   author: string;
-  emoji: string;
-  level: "1" | "2" | "3" | "4";
-  isFavorite?: boolean;
 }
 
-const books: Book[] = [
-  {
-    id: "book1",
-    title: "Chú Gấu Nhỏ",
-    author: "Tác giả nước ngoài",
-    emoji: "🐻",
-    level: "1",
-    isFavorite: true,
-  },
-  {
-    id: "book2",
-    title: "Phiêu Lưu Trên Biển",
-    author: "Tác giả nước ngoài",
-    emoji: "⛵",
-    level: "2",
-  },
-  {
-    id: "book3",
-    title: "Công Chúa Và Rồng",
-    author: "Tác giả nước ngoài",
-    emoji: "🐉",
-    level: "3",
-    isFavorite: true,
-  },
-  {
-    id: "book4",
-    title: "Nhà Mago Phép Thuật",
-    author: "Tác giả nước ngoài",
-    emoji: "✨",
-    level: "2",
-  },
-  {
-    id: "book5",
-    title: "Khám Phá Rừng",
-    author: "Tác giả nước ngoài",
-    emoji: "🌳",
-    level: "1",
-  },
-  {
-    id: "book6",
-    title: "Bạn Nhện Bé Nhỏ",
-    author: "Tác giả nước ngoài",
-    emoji: "🕷️",
-    level: "1",
-  },
-];
-
 export function LibrarySection() {
-  return (
-    <DashboardSection title="📚 Thư viện đọc" className="mb-10">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-5">
-        {books.map((book) => (
-          <DashboardCard
-            key={book.id}
-            onClick={() => {
-              // Placeholder for book navigation
-              console.log(`Reading book: ${book.id}`);
-            }}
-            className="flex flex-col items-center text-center relative"
-          >
-            {book.isFavorite && (
-              <button
-                className="absolute top-3 right-3 text-warning hover:scale-110 transition-transform"
-                aria-label={`Remove ${book.title} from favorites`}
-              >
-                <Heart className="w-5 h-5 fill-current" aria-hidden="true" />
-              </button>
-            )}
+  const [books, setBooks] = useState<Book[]>([]);
+  const userId = localStorage.getItem("userId");
 
-            <div className="text-4xl mb-3">{book.emoji}</div>
-            <h3 className="text-base font-bold text-foreground mb-1">
-              {book.title}
-            </h3>
-            <p className="text-xs text-muted-foreground mb-3">{book.author}</p>
-            <div className="inline-block px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold">
-              Cấp độ {book.level}
+  // Gọi API lấy sách cá nhân để hiện ra trang chủ
+  useEffect(() => {
+    const fetchBooks = async () => {
+      if (!userId) return;
+      try {
+        const response = await fetch(`http://localhost:5000/api/my-books?userId=${userId}`);
+        const data = await response.json();
+        // Chỉ lấy 6 cuốn mới nhất để hiển thị
+        setBooks(data.slice(0, 6));
+      } catch (error) {
+        console.error("Lỗi tải sách:", error);
+      }
+    };
+    fetchBooks();
+  }, [userId]);
+
+  return (
+    <DashboardSection title="📚 Thư viện của tôi" className="mb-10">
+      {books.length > 0 ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5">
+          {books.map((book) => (
+            <div key={book._id} className="flex justify-center">
+              <BookCard
+                id={book._id}
+                title={book.title}
+                coverUrl={book.coverUrl}
+                // author={book.author} // Bỏ tác giả nếu muốn gọn
+                onClick={() => console.log(`Đọc sách: ${book._id}`)}
+              />
             </div>
-          </DashboardCard>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-8 text-muted-foreground bg-secondary/20 rounded-xl">
+          <p>Bạn chưa có cuốn sách nào.</p>
+          <p className="text-sm">Hãy vào Thư viện để thêm sách mới nhé!</p>
+        </div>
+      )}
     </DashboardSection>
   );
 }

@@ -40,6 +40,42 @@ const UserSchema = new mongoose.Schema({
 });
 const UserModel = mongoose.model("users", UserSchema);
 
+// ==========================================
+// SCHEMA CHO SÁCH CÁ NHÂN (PERSONAL BOOKS)
+// ==========================================
+const PersonalBookSchema = new mongoose.Schema({
+  title: { type: String, required: true },       // Tên sách
+  coverUrl: { type: String },                    // Link ảnh bìa
+  fileUrl: { type: String },                     // Link file sách (PDF/Doc)
+  // QUAN TRỌNG NHẤT: Trường này lưu ID của người sở hữu
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'users',
+    required: true
+  },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const PersonalBookModel = mongoose.model("personal_books", PersonalBookSchema);
+
+// ==========================================
+// 1. SCHEMA SÁCH HỆ THỐNG (SYSTEM BOOKS)
+// ==========================================
+const BookSchema = new mongoose.Schema({
+  title: { type: String, required: true },       // Tên sách
+  author: { type: String, default: "Sưu tầm" },  // Tác giả
+  category: { type: String, required: true },    // Thể loại: Cổ tích, Khoa học...
+  level: { type: String, enum: ['Dễ', 'Trung bình', 'Khó'], default: 'Dễ' }, // Độ khó
+  description: { type: String },                 // Mô tả ngắn
+  coverUrl: { type: String },                    // Link ảnh bìa
+  content: { type: String },                     // Nội dung truyện (nếu là dạng text)
+  pdfUrl: { type: String },                      // Link file PDF (nếu là dạng đọc file)
+  isPremium: { type: Boolean, default: false },  // Sách VIP mới đọc được (tính năng mở rộng sau này)
+});
+
+// Lưu vào collection tên là 'system_books'
+const BookModel = mongoose.model("system_books", BookSchema);
+
 // =========================================================
 // PHẦN 2: API AUTHENTICATION
 // =========================================================
@@ -133,39 +169,191 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// =========================================================
-// PHẦN 3: API DỮ LIỆU SÁCH
-// =========================================================
+// ==========================================
+// 2. API QUẢN LÝ SÁCH HỆ THỐNG
+// ==========================================
 
-const books = [
-  {
-    id: 1,
-    title: "Dế Mèn Phiêu Lưu Ký",
-    author: "Tô Hoài",
-    category: "Phiêu Lưu",
-    coverUrl: "https://example.com/demen.jpg",
-    description: "Cuộc phiêu lưu của chú Dế Mèn qua bao vùng đất...",
-    level: "Trung bình"
-  },
-  {
-    id: 2,
-    title: "Tấm Cám",
-    author: "Dân gian",
-    category: "Truyện Cổ Tích",
-    coverUrl: "https://example.com/tamcam.jpg",
-    description: "Câu chuyện về cô Tấm hiền lành và mẹ con Cám...",
-    level: "Dễ"
-  },
-];
+// A. API Lấy danh sách sách (Có bộ lọc tìm kiếm)
+// Cách dùng: 
+// - Lấy hết: GET /api/books
+// - Lọc: GET /api/books?category=Truyện Cổ Tích&level=Dễ
+app.get('/api/books', async (req, res) => {
+  try {
+    const { category, level, search } = req.query;
 
-// API Lấy sách (có lọc theo category)
-app.get('/api/books', (req, res) => {
-  const category = req.query.category;
-  if (category) {
-    const filteredBooks = books.filter(book => book.category === category);
-    res.json(filteredBooks);
-  } else {
+    // Tạo bộ lọc động
+    let query: any = {};
+    if (category) query.category = category;
+    if (level) query.level = level;
+    if (search) {
+      // Tìm kiếm tương đối theo tên sách (không cần gõ đúng 100%)
+      query.title = { $regex: search, $options: 'i' };
+    }
+
+    const books = await BookModel.find(query);
     res.json(books);
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi tải sách: " + err.message });
+  }
+});
+
+// B. API Xem chi tiết 1 cuốn sách (Để vào màn hình đọc)
+// Cách dùng: GET /api/books/654abc... (ID của sách)
+app.get('/api/books/:id', async (req, res) => {
+  try {
+    const book = await BookModel.findById(req.params.id);
+    if (!book) return res.status(404).json({ message: "Không tìm thấy sách" });
+    res.json(book);
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi: " + err.message });
+  }
+});
+
+// C. API Thêm sách mới vào kho (Dành cho Admin/Giáo viên nhập liệu)
+// Cách dùng: POST /api/books (Gửi JSON body)
+app.post('/api/books', async (req, res) => {
+  try {
+    // Chỉ lấy các trường cần thiết để bảo mật
+    const { title, author, category, level, description, coverUrl, content, pdfUrl } = req.body;
+
+    const newBook = new BookModel({
+      title, author, category, level, description, coverUrl, content, pdfUrl
+    });
+
+    await newBook.save();
+    res.status(201).json({ message: "Đã thêm sách vào hệ thống!", book: newBook });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi thêm sách: " + err.message });
+  }
+});
+
+// ==========================================
+// API XỬ LÝ SÁCH CÁ NHÂN
+// ==========================================
+
+// 1. API Lấy sách của TÔI (Chỉ lấy sách của user đang đăng nhập)
+// Frontend gọi: GET /api/my-books?userId=...
+app.get("/api/my-books", async (req, res) => {
+  try {
+    const { userId } = req.query; // Frontend phải gửi kèm userId lên
+
+    if (!userId) {
+      return res.status(400).json({ message: "Thiếu userId" });
+    }
+
+    // Tìm trong kho sách cá nhân, chỉ lấy cuốn nào có userId trùng khớp
+    const myBooks = await PersonalBookModel.find({ userId: userId }).sort({ createdAt: -1 });
+
+    res.json(myBooks);
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi: " + err.message });
+  }
+});
+
+// 2. API Tải sách mới lên (Thêm vào thư viện cá nhân)
+// Frontend gọi: POST /api/my-books
+app.post("/api/my-books", async (req, res) => {
+  try {
+    const { title, coverUrl, fileUrl, userId } = req.body;
+
+    // Tạo cuốn sách mới
+    const newBook = new PersonalBookModel({
+      title,
+      coverUrl: coverUrl || "https://example.com/default-cover.png", // Ảnh mặc định nếu ko có
+      fileUrl,
+      userId // Gắn nhãn: Sách này là của userId này
+    });
+
+    await newBook.save();
+    res.status(201).json({ message: "Thêm sách thành công", book: newBook });
+
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi: " + err.message });
+  }
+});
+
+// =========================================================
+// API NẠP DỮ LIỆU MẪU (DÙNG 1 LẦN RỒI XÓA)
+// =========================================================
+app.get('/api/seed-full-library', async (req, res) => {
+  try {
+    // Xóa hết sách cũ để tránh trùng lặp (nếu muốn)
+    // await BookModel.deleteMany({}); 
+
+    const sampleBooks = [
+      // 1. TRUYỆN CỔ TÍCH (category phải khớp chữ trong Frontend)
+      {
+        title: "Tấm Cám",
+        author: "Dân gian",
+        category: "Truyện Cổ Tích",
+        coverUrl: "https://cdn-icons-png.flaticon.com/512/3062/3062634.png", // Hình cô Tấm (ví dụ)
+      },
+      {
+        title: "Sự Tích Cây Khế",
+        author: "Dân gian",
+        category: "Truyện Cổ Tích",
+        coverUrl: "https://cdn-icons-png.flaticon.com/512/427/427538.png", // Hình chim
+      },
+      {
+        title: "Thạch Sanh",
+        author: "Dân gian",
+        category: "Truyện Cổ Tích",
+        coverUrl: "https://cdn-icons-png.flaticon.com/512/3408/3408545.png", // Hình dũng sĩ
+      },
+
+      // 2. PHIÊU LƯU
+      {
+        title: "Dế Mèn Phiêu Lưu Ký",
+        author: "Tô Hoài",
+        category: "Phiêu Lưu",
+        coverUrl: "https://cdn-icons-png.flaticon.com/512/616/616430.png", // Hình dế
+      },
+      {
+        title: "Đảo Giấu Vàng",
+        author: "Robert Louis",
+        category: "Phiêu Lưu",
+        coverUrl: "https://cdn-icons-png.flaticon.com/512/2896/2896593.png", // Hình bản đồ
+      },
+
+      // 3. KHOA HỌC
+      {
+        title: "10 Vạn Câu Hỏi Vì Sao",
+        author: "Nhiều tác giả",
+        category: "Khoa học",
+        coverUrl: "https://cdn-icons-png.flaticon.com/512/2021/2021575.png", // Hình nguyên tử
+      },
+      {
+        title: "Khám Phá Vũ Trụ",
+        author: "NASA",
+        category: "Khoa học",
+        coverUrl: "https://cdn-icons-png.flaticon.com/512/3212/3212624.png", // Hình tên lửa
+      },
+
+      // 4. KÌ ẢO
+      {
+        title: "Harry Potter",
+        author: "J.K. Rowling",
+        category: "Kì ảo",
+        coverUrl: "https://cdn-icons-png.flaticon.com/512/9103/9103233.png", // Hình mũ phù thủy
+      }
+    ];
+
+    await BookModel.insertMany(sampleBooks);
+    res.send("✅ Đã nạp thành công sách vào thư viện!");
+  } catch (err) {
+    res.status(500).send("Lỗi: " + err.message);
+  }
+});
+
+// index.ts
+// API xem chi tiết 1 cuốn sách
+app.get('/api/books/:id', async (req, res) => {
+  try {
+    const book = await BookModel.findById(req.params.id);
+    if (!book) return res.status(404).json({ message: "Không tìm thấy sách" });
+    res.json(book);
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi ID sách không hợp lệ" });
   }
 });
 
@@ -173,6 +361,8 @@ app.get('/api/books', (req, res) => {
 app.get("/api/ping", (req, res) => {
   res.json({ message: "Server is alive!" });
 });
+
+
 
 // =========================================================
 // KHỞI ĐỘNG SERVER

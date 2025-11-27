@@ -13,7 +13,7 @@ export default function Index() {
 
   // 3. Lấy dữ liệu từ bộ nhớ khi trang vừa tải xong
   useEffect(() => {
-    const savedStreak = localStorage.getItem("streak");
+    const savedStreak = localStorage.getItem("currentStreak");
     if (savedStreak) {
       setStreak(parseInt(savedStreak)); // Chuyển chữ thành số
     }

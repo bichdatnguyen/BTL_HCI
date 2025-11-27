@@ -1,126 +1,124 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSetPageHeader } from "@/contexts/HeaderContext";
-import { SearchBar } from "./SearchBar";
-import { CarouselRow } from "./CarouselRow";
+import { SearchBar } from "./SearchBar"; // Giữ nguyên search bar cũ của bạn
+import { BookCard } from "@/components/BookCard";
+import { BookCategoryRow } from "@/components/BookCategoryRow"; // Import component hàng sách mới
+import { Link, useNavigate } from "react-router-dom";
 
+// Định nghĩa kiểu dữ liệu sách
 interface Book {
-  id: string;
+  _id: string; // MongoDB dùng _id thay vì id
   title: string;
-  emoji: string;
-  isFavorite?: boolean;
+  coverUrl: string;
+  author: string;
+  userId?: string;
 }
 
-const personalLibraryBooks: Book[] = [
-  { id: "pb1", title: "Chú gấu nhỏ", emoji: "🐻", isFavorite: true },
-  { id: "pb2", title: "Công chúa và rồng", emoji: "🐉", isFavorite: true },
-  { id: "pb3", title: "Nhà phép thuật", emoji: "✨", isFavorite: false },
-];
-
-const fairyTaleBooks: Book[] = [
-  { id: "ft1", title: "Lọ lem", emoji: "👑" },
-  { id: "ft2", title: "Bạch Tuyết", emoji: "��️" },
-  { id: "ft3", title: "Quỷ dữ", emoji: "👹" },
-  { id: "ft4", title: "Cô bé bán diêm", emoji: "🕯️" },
-  { id: "ft5", title: "Kẻ cô độc", emoji: "🎭" },
-  { id: "ft6", title: "Hoàng tử ếch", emoji: "🐸" },
-];
-
-const adventureBooks: Book[] = [
-  { id: "ad1", title: "Phiêu lưu trên biển", emoji: "⛵" },
-  { id: "ad2", title: "Hòn đảo kỳ bí", emoji: "🏝️" },
-  { id: "ad3", title: "Vượt sa mạc", emoji: "🏜️" },
-  { id: "ad4", title: "Leo núi tuyết", emoji: "⛰️" },
-  { id: "ad5", title: "Rừng sâu bí ẩn", emoji: "🌲" },
-  { id: "ad6", title: "Thành phố dưới nước", emoji: "🌊" },
-];
-
-const scienceBooks: Book[] = [
-  { id: "sc1", title: "Khám phá vũ trụ", emoji: "🚀" },
-  { id: "sc2", title: "Các hành tinh", emoji: "🪐" },
-  { id: "sc3", title: "Sinh vật biển", emoji: "🐠" },
-  { id: "sc4", title: "Cây cỏ rợp trời", emoji: "🌿" },
-  { id: "sc5", title: "Động vật hoang dã", emoji: "🦁" },
-  { id: "sc6", title: "Cơ thể con người", emoji: "🧬" },
-];
-
-const fantasyBooks: Book[] = [
-  { id: "fa1", title: "Vương quốc phép thuật", emoji: "🔮" },
-  { id: "fa2", title: "Thế giới yêu tinh", emoji: "🧚" },
-  { id: "fa3", title: "Lâu đài bí ẩn", emoji: "🏰" },
-  { id: "fa4", title: "Bảo bối thần kỳ", emoji: "💎" },
-  { id: "fa5", title: "Chiến binh huyền thoại", emoji: "⚔️" },
-  { id: "fa6", title: "Nước Narnia", emoji: "🦁" },
-];
-
 export function LibraryPage() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+
+  // State cho sách cá nhân
+  const [personalBooks, setPersonalBooks] = useState<Book[]>([]);
+  const [loadingPersonal, setLoadingPersonal] = useState(true);
+
+  // Lấy UserID từ localStorage
+  const userId = localStorage.getItem("userId");
 
   useSetPageHeader({
     title: "📚 Thư viện",
     subtitle: "Khám phá và đọc những cuốn sách tuyệt vời",
-    userName: "T",
-    streakCount: 5,
+    userName: "T", // Bạn có thể lấy tên thật từ API profile nếu muốn
+    streakCount: parseInt(localStorage.getItem("currentStreak") || "0"),
   });
+
+  // 1. GỌI API LẤY SÁCH CÁ NHÂN
+  useEffect(() => {
+    const fetchPersonalBooks = async () => {
+      if (!userId) return;
+      try {
+        const response = await fetch(`http://localhost:5000/api/my-books?userId=${userId}`);
+        const data = await response.json();
+        setPersonalBooks(data);
+      } catch (error) {
+        console.error("Lỗi lấy sách cá nhân:", error);
+      } finally {
+        setLoadingPersonal(false);
+      }
+    };
+    fetchPersonalBooks();
+  }, [userId]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    console.log("Searching for:", query);
-  };
-
-  const handleUploadClick = () => {
-    console.log("Upload book clicked");
+    // Logic search có thể mở rộng sau (gọi API search)
   };
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in p-6 pb-20">
       {/* Search Bar */}
       <SearchBar placeholder="Tìm kiếm sách..." onSearch={handleSearch} />
 
-      {/* Personal Library Section */}
-      <CarouselRow
-        title="📖 Thư viện cá nhân"
-        books={personalLibraryBooks}
-        showUploadCard={true}
-        onUploadClick={handleUploadClick}
-        isFixedWidth={true}
-      />
+      {/* --- PHẦN 1: THƯ VIỆN CÁ NHÂN (Gọi API riêng) --- */}
+      <div className="mb-10 mt-6">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-2xl">📖</span>
+          <h2 className="text-2xl font-bold text-foreground">Thư viện cá nhân</h2>
+        </div>
 
-      {/* Discover Books Section */}
+        <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide">
+          {/* Nút Tải Sách Lên (Luôn hiện đầu tiên) */}
+          <BookCard
+            id="upload-btn"
+            title="Tải sách"
+            isUpload={true}
+            onClick={() => console.log("Mở modal upload...")}
+          />
+
+          {/* Danh sách sách cá nhân từ API */}
+          {personalBooks.map((book) => (
+            <div key={book._id}>
+              <BookCard
+                id={book._id}
+                title={book.title}
+                coverUrl={book.coverUrl}
+                onClick={() => navigate(`/read/${book._id}`)}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* --- PHẦN 2: KHÁM PHÁ SÁCH HỆ THỐNG (Dùng Component tái sử dụng) --- */}
       <div className="mb-4">
-        <h2 className="text-3xl font-bold text-foreground mb-10">
+        <h2 className="text-3xl font-bold text-foreground mb-8">
           🌟 Khám phá Sách
         </h2>
 
-        {/* Fairy Tales Category */}
-        <CarouselRow
+        {/* Gọi Component BookCategoryRow - Nó sẽ tự gọi API bên trong */}
+
+        <BookCategoryRow
           title="✨ Truyện Cổ Tích"
-          books={fairyTaleBooks}
-          categoryId="fairy-tales"
-          isFixedWidth={true}
+          category="Truyện Cổ Tích"
+          icon=""
         />
 
-        {/* Adventure Category */}
-        <CarouselRow
+        <BookCategoryRow
           title="🗺️ Phiêu Lưu"
-          books={adventureBooks}
-          categoryId="adventure"
-          isFixedWidth={true}
+          category="Phiêu Lưu"
+          icon=""
         />
 
-        {/* Science Category */}
-        <CarouselRow
+        <BookCategoryRow
           title="🔬 Khoa Học"
-          books={scienceBooks}
-          categoryId="science"
-          isFixedWidth={true}
+          category="Khoa học"
+          icon=""
         />
 
-        {/* Fantasy Category */}
-        <CarouselRow
+        <BookCategoryRow
           title="🪄 Kỳ Ảo"
-          books={fantasyBooks}
-          categoryId="fantasy"
-          isFixedWidth={true}
+          category="Kì ảo"
+          icon=""
         />
       </div>
     </div>
