@@ -1,79 +1,79 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Pause, Volume2, VolumeX, Settings } from "lucide-react";
-
-// Dữ liệu giả lập nội dung sách (Vì database của bạn có thể chưa có nội dung text dài)
-const SAMPLE_CONTENT = `Ngày xưa, trong một khu rừng xanh tươi, có một chú gấu nhỏ tên là Teddy. 
-Chú là một chú gấu vui vẻ, thích khám phá những điều mới lạ và tìm kiếm những người bạn mới. 
-Một hôm, Teddy gặp một chú sóc nhỏ tên là Squirrel đang ẩn trốn hạt dẻ. 
-"Chào bạn!" Teddy nói. "Tôi tên là Teddy, bạn tên là gì?" 
-Squirrel cười vui vẻ và trả lời: "Tôi là Squirrel, rất vui được gặp bạn mới!"`;
+import { ArrowLeft, Play, Pause, Volume2, VolumeX } from "lucide-react";
 
 export default function BookReader() {
-  const { bookId } = useParams();
+  const { bookId } = useParams(); // Lấy ID từ URL (ví dụ: /read/65a1b2...)
   const navigate = useNavigate();
 
-  // --- STATE QUẢN LÝ ---
-  const [bookTitle, setBookTitle] = useState("Đang tải tên sách...");
+  // State lưu thông tin sách
+  const [bookTitle, setBookTitle] = useState("Đang tải...");
   const [sentences, setSentences] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // State điều khiển Player
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState(1); // Tốc độ đọc (1x, 0.5x...)
+  const [playbackRate, setPlaybackRate] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
 
-  // Ref để điều khiển giọng đọc
+  // Ref cho giọng đọc
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
   const synth = window.speechSynthesis;
 
-  // --- 2. MỚI THÊM: GỌI API LẤY THÔNG TIN SÁCH ---
+  // --- 1. GỌI API LẤY NỘI DUNG SÁCH ---
   useEffect(() => {
-    const fetchBookDetail = async () => {
+    const fetchBookContent = async () => {
       try {
+        setIsLoading(true);
+        // Gọi API với ID lấy từ URL
         const response = await fetch(`http://localhost:5000/api/books/${bookId}`);
         const data = await response.json();
 
-        if (data.title) {
-          setBookTitle(data.title); // Cập nhật tên sách thật
+        if (data) {
+          setBookTitle(data.title || "Không có tên");
+
+          // Lấy nội dung từ Database (Trường 'content' mà bạn vừa nạp)
+          const rawContent = data.content || "Nội dung cuốn sách này đang được cập nhật.";
+
+          // Tách đoạn văn dài thành từng câu để AI đọc
+          // Logic: Tách dựa vào dấu chấm (.), chấm hỏi (?), chấm than (!)
+          const splitText = rawContent.match(/[^.?!]+[.?!]+["']?|[^.?!]+$/g) || [rawContent];
+          const cleanSentences = splitText.map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+
+          setSentences(cleanSentences);
         }
       } catch (error) {
-        console.error("Lỗi lấy thông tin sách:", error);
-        setBookTitle("Không tìm thấy sách");
+        console.error("Lỗi:", error);
+        setSentences(["Không thể tải nội dung sách. Vui lòng thử lại sau."]);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     if (bookId) {
-      fetchBookDetail();
+      fetchBookContent();
     }
   }, [bookId]);
-
-  // --- 1. XỬ LÝ VĂN BẢN ĐẦU VÀO ---
-  useEffect(() => {
-    // Tách đoạn văn thành từng câu dựa vào dấu chấm, chấm hỏi, chấm than
-    // (Đây là cách đơn giản, thực tế có thể phức tạp hơn)
-    const splitText = SAMPLE_CONTENT.match(/[^.?!]+[.?!]+["']?|[^.?!]+$/g) || [];
-    const cleanSentences = splitText.map(s => s.trim()).filter(s => s.length > 0);
-    setSentences(cleanSentences);
-  }, []);
 
   // --- 2. XỬ LÝ GIỌNG ĐỌC (AI) ---
   useEffect(() => {
     if (sentences.length === 0) return;
 
-    // Hủy giọng đọc cũ nếu có
+    // Hủy lệnh đọc cũ trước khi đọc câu mới
     synth.cancel();
 
-    // Tạo đối tượng đọc mới cho câu hiện tại
     const textToRead = sentences[currentSentenceIndex];
     const utterance = new SpeechSynthesisUtterance(textToRead);
 
-    utterance.lang = "vi-VN"; // Đặt ngôn ngữ tiếng Việt
-    utterance.rate = playbackRate; // Tốc độ đọc
+    utterance.lang = "vi-VN"; // Giọng đọc tiếng Việt
+    utterance.rate = playbackRate;
     utterance.volume = isMuted ? 0 : 1;
 
-    // Sự kiện khi đọc xong 1 câu
+    // Khi đọc xong 1 câu -> Tự chuyển sang câu tiếp theo
     utterance.onend = () => {
       if (currentSentenceIndex < sentences.length - 1 && isPlaying) {
-        setCurrentSentenceIndex(prev => prev + 1); // Chuyển sang câu tiếp theo
+        setCurrentSentenceIndex(prev => prev + 1);
       } else {
         setIsPlaying(false); // Hết bài thì dừng
       }
@@ -81,148 +81,131 @@ export default function BookReader() {
 
     speechRef.current = utterance;
 
-    // Nếu đang trạng thái Play thì đọc luôn
+    // Nếu đang Play thì đọc luôn
     if (isPlaying) {
       synth.speak(utterance);
     }
 
-    // Cleanup khi component bị hủy
+    // Dọn dẹp khi thoát trang
     return () => {
       synth.cancel();
     };
-  }, [currentSentenceIndex, sentences, playbackRate, isMuted, isPlaying]); // Chạy lại khi index hoặc setting thay đổi
+  }, [currentSentenceIndex, sentences, playbackRate, isMuted, isPlaying]);
 
-  // --- CÁC HÀM ĐIỀU KHIỂN ---
+  // --- HÀM ĐIỀU KHIỂN ---
   const togglePlay = () => {
     if (isPlaying) {
-      synth.cancel(); // Dừng đọc
+      synth.cancel();
       setIsPlaying(false);
     } else {
       setIsPlaying(true);
-      // useEffect sẽ tự kích hoạt synth.speak()
     }
   };
 
   const changeSpeed = () => {
-    // Vòng lặp tốc độ: 0.5 -> 1 -> 1.5 -> 0.5
-    if (playbackRate === 0.5) setPlaybackRate(1);
-    else if (playbackRate === 1) setPlaybackRate(1.5);
-    else setPlaybackRate(0.5);
+    if (playbackRate === 1) setPlaybackRate(1.5);
+    else if (playbackRate === 1.5) setPlaybackRate(0.75); // Đọc chậm
+    else setPlaybackRate(1);
   };
 
-  // Tính phần trăm tiến độ
-  const progressPercentage = ((currentSentenceIndex + 1) / sentences.length) * 100;
+  const progressPercentage = sentences.length > 0
+    ? ((currentSentenceIndex + 1) / sentences.length) * 100
+    : 0;
 
   return (
     <div className="min-h-screen bg-[#FDFCF6] flex flex-col">
       {/* HEADER */}
-      <div className="sticky top-0 z-10 bg-[#FDFCF6] px-4 py-4 flex items-center gap-4 border-b border-gray-100">
+      <div className="sticky top-0 z-10 bg-[#FDFCF6]/90 backdrop-blur-sm px-4 py-4 flex items-center gap-4 border-b border-gray-100">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-1 text-gray-600 font-medium hover:text-black"
+          className="flex items-center gap-1 text-gray-600 font-medium hover:text-black transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           Quay lại
         </button>
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">📖</span>
-          <h1 className="text-xl font-bold text-gray-800">
-            {bookTitle}
-          </h1>
+        <h1 className="text-xl font-bold text-gray-800 line-clamp-1">
+          📖 {bookTitle}
+        </h1>
+      </div>
+
+      {/* NỘI DUNG SÁCH */}
+      <div className="flex-1 px-4 md:px-8 py-8 max-w-3xl mx-auto w-full pb-44">
+        <div className="bg-white rounded-[32px] p-6 md:p-10 shadow-sm border border-gray-100 min-h-[60vh]">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2 mt-20">
+              <div className="animate-spin text-2xl">⏳</div>
+              <p>Đang tải nội dung...</p>
+            </div>
+          ) : (
+            <div className="text-lg md:text-2xl leading-loose text-gray-700 font-medium space-y-2 text-justify">
+              {sentences.map((sentence, index) => (
+                <span
+                  key={index}
+                  onClick={() => {
+                    setCurrentSentenceIndex(index);
+                    setIsPlaying(true);
+                  }}
+                  className={`
+                    transition-all duration-300 rounded px-1 py-0.5 cursor-pointer hover:bg-gray-50
+                    ${index === currentSentenceIndex
+                      ? "bg-[#FFF9C4] text-gray-900 shadow-sm decoration-2 underline-offset-4"
+                      : ""}
+                  `}
+                >
+                  {sentence}{" "}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* MAIN CONTENT (VĂN BẢN) */}
-      <div className="flex-1 px-6 py-8 max-w-3xl mx-auto w-full pb-40">
-        <div className="bg-white rounded-[40px] p-8 shadow-sm border border-gray-50 min-h-[500px]">
-          <div className="text-lg md:text-xl leading-loose text-gray-600 font-medium space-y-4">
-            {/* Render từng câu và kiểm tra để tô màu */}
-            {sentences.map((sentence, index) => (
-              <span
-                key={index}
-                onClick={() => {
-                  // Cho phép click vào câu để đọc từ đó
-                  setCurrentSentenceIndex(index);
-                  setIsPlaying(true);
-                }}
-                className={`
-                  transition-colors duration-300 rounded px-1 cursor-pointer
-                  ${index === currentSentenceIndex
-                    ? "bg-[#FFF9C4] text-gray-900" // Màu vàng highlight giống ảnh
-                    : "hover:bg-gray-50"}
-                `}
-              >
-                {sentence}{" "}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* THANH ĐIỀU KHIỂN (PLAYER) */}
+      <div className="fixed bottom-0 left-0 w-full bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-6 py-6 rounded-t-[32px] border-t border-gray-100">
+        <div className="max-w-3xl mx-auto relative">
 
-      {/* BOTTOM PLAYER (THANH ĐIỀU KHIỂN) */}
-      <div className="fixed bottom-0 left-0 w-full bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] px-6 py-6 rounded-t-3xl">
-        <div className="max-w-3xl mx-auto relative"> {/* Thêm relative vào đây cho chắc chắn */}
-
-          {/* Progress Bar */}
-          {/* 👇 SỬA Ở ĐÂY: Đổi mb-4 thành mb-10 để tạo khoảng cách rộng hơn */}
-          <div className="relative w-full h-2 bg-gray-200 rounded-full mb-10 cursor-pointer group">
-            {/* Thêm vùng click ảo to hơn để dễ bấm tua trên điện thoại */}
-            <div className="absolute -top-2 -bottom-2 w-full bg-transparent" />
-
+          {/* Thanh tiến trình */}
+          <div className="relative w-full h-2 bg-gray-100 rounded-full mb-8 overflow-hidden">
             <div
-              className="absolute top-0 left-0 h-full bg-green-500 rounded-full transition-all duration-500"
+              className="absolute top-0 left-0 h-full bg-green-500 rounded-full transition-all duration-500 ease-out"
               style={{ width: `${progressPercentage}%` }}
             />
-
-            {/* Thêm cục tròn ở đầu thanh tiến trình cho đẹp (Optional) */}
-            <div
-              className="absolute top-1/2 -translate-y-1/2 h-4 w-4 bg-white border-2 border-green-500 rounded-full shadow-sm"
-              style={{ left: `${progressPercentage}%`, transform: 'translate(-50%, -50%)' }}
-            />
           </div>
 
-          {/* Controls Row */}
-          <div className="flex items-center justify-between h-14"> {/* Set chiều cao cố định h-14 để giữ khung */}
-            {/* Left Info */}
-            <div className="flex items-center gap-2 text-sm text-gray-500 font-medium">
-              <span>⏱ Thời gian đọc của AI</span>
-            </div>
+          {/* Các nút bấm */}
+          <div className="flex items-center justify-between h-16">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider hidden md:block">
+              AI Reading
+            </span>
 
-            {/* Center Play Button */}
-            {/* Vẫn giữ absolute để nó luôn ở chính giữa màn hình bất kể 2 bên text dài ngắn */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-6">
-              {/* Speed Button */}
-              <button
-                onClick={changeSpeed}
-                className="w-10 h-10 rounded-full border border-blue-500 text-blue-600 font-bold text-xs flex items-center justify-center hover:bg-blue-50 transition-colors"
-              >
+            {/* Cụm nút trung tâm */}
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-6 md:gap-8">
+              {/* Nút Tốc độ */}
+              <button onClick={changeSpeed} className="w-10 h-10 rounded-full bg-gray-50 text-gray-600 font-bold text-xs hover:bg-gray-100 transition-colors">
                 {playbackRate}x
               </button>
 
-              {/* Play/Pause Main Button */}
+              {/* Nút Play/Pause Chính */}
               <button
                 onClick={togglePlay}
                 className="w-16 h-16 bg-[#22C55E] rounded-full flex items-center justify-center text-white shadow-xl shadow-green-200 hover:scale-105 active:scale-95 transition-all"
               >
                 {isPlaying ? (
-                  <Pause className="w-7 h-7 fill-current" />
+                  <Pause className="w-8 h-8 fill-current" />
                 ) : (
-                  <Play className="w-7 h-7 fill-current ml-1" />
+                  <Play className="w-8 h-8 fill-current ml-1" />
                 )}
               </button>
 
-              {/* Volume Button */}
-              <button
-                onClick={() => setIsMuted(!isMuted)}
-                className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 transition-colors"
-              >
+              {/* Nút Âm lượng */}
+              <button onClick={() => setIsMuted(!isMuted)} className="w-10 h-10 rounded-full bg-gray-50 text-gray-600 flex items-center justify-center hover:bg-gray-100 transition-colors">
                 {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
               </button>
             </div>
 
-            {/* Right Time Info */}
-            <div className="text-sm font-medium text-gray-500 tabular-nums">
-              {Math.floor(currentSentenceIndex / 2)}:{currentSentenceIndex % 2 === 0 ? "00" : "30"} / 05:00
+            {/* Thời gian (Số câu) */}
+            <div className="text-sm font-semibold text-gray-500 tabular-nums">
+              {currentSentenceIndex + 1} / {sentences.length}
             </div>
           </div>
         </div>
