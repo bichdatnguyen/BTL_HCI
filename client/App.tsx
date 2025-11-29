@@ -18,6 +18,7 @@ import WordSearch from "./pages/WordSearch";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import BookReader from "./pages/BookReader";
+import PronunciationPage from "./pages/Pronunciation";
 
 import ManageProfiles from "./pages/ManageProfiles";
 import NotFound from "./pages/NotFound";
@@ -40,7 +41,6 @@ function Layout({ children }: { children: React.ReactNode }) {
               userName={header.userName}
               userAvatar={header.userAvatar}
               streakCount={header.streakCount}
-
             />
           </div>
         )}
@@ -66,6 +66,8 @@ export default function App() {
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+
+                {/* Các trang có Layout (cần sidebar, header) */}
                 <Route
                   path="/manage-profiles"
                   element={
@@ -74,6 +76,7 @@ export default function App() {
                     </Layout>
                   }
                 />
+
                 <Route
                   path="/"
                   element={
@@ -82,22 +85,7 @@ export default function App() {
                     </Layout>
                   }
                 />
-                <Route
-                  path="/games/matching"
-                  element={
-                    <Layout>
-                      <WordMatching />
-                    </Layout>
-                  }
-                />
-                <Route
-                  path="/games/word-search"
-                  element={
-                    <Layout>
-                      <WordSearch />
-                    </Layout>
-                  }
-                />
+
                 <Route
                   path="/games"
                   element={
@@ -106,6 +94,35 @@ export default function App() {
                     </Layout>
                   }
                 />
+
+                <Route
+                  path="/games/matching"
+                  element={
+                    <Layout>
+                      <WordMatching />
+                    </Layout>
+                  }
+                />
+
+                <Route
+                  path="/games/word-search"
+                  element={
+                    <Layout>
+                      <WordSearch />
+                    </Layout>
+                  }
+                />
+
+                {/* Đảm bảo route này nằm sau /games */}
+                <Route
+                  path="/games/pronunciation"
+                  element={
+                    <Layout>
+                      <PronunciationPage />
+                    </Layout>
+                  }
+                />
+
                 <Route
                   path="/library"
                   element={
@@ -115,10 +132,27 @@ export default function App() {
                   }
                 />
 
-                <Route path="/read/:bookId" element={<BookReader />} />
+                {/* Các route động - để xuống dưới cùng */}
+                <Route
+                  path="/category/:categoryName"
+                  element={
+                    <Layout>
+                      <CategoryView />
+                    </Layout>
+                  }
+                />
 
-                <Route path="/category/:categoryName" element={<CategoryView />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                {/* BookReader cũng nên có Layout nếu bạn muốn sidebar */}
+                <Route
+                  path="/read/:bookId"
+                  element={
+                    <Layout>
+                      <BookReader />
+                    </Layout>
+                  }
+                />
+
+                {/* Catch-all cuối cùng */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </HeaderProvider>
