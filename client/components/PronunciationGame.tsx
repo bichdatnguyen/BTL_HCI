@@ -1,35 +1,9 @@
+// ...existing code...
 import { useEffect, useState } from "react";
 import { Check, Mic, Volume2, RotateCcw } from "lucide-react";
 import { useSetPageHeader } from "@/contexts/HeaderContext";
-
-// 20 từ
-const WORD_BANK = [
-  { id: "1", word: "mèo" },
-  { id: "2", word: "chó" },
-  { id: "3", word: "cá" },
-  { id: "4", word: "chim" },
-  { id: "5", word: "cơm" },
-  { id: "6", word: "sữa" },
-  { id: "7", word: "chuối" },
-  { id: "8", word: "táo" },
-  { id: "9", word: "bóng" },
-  { id: "10", word: "mũ" },
-  { id: "11", word: "giày" },
-  { id: "12", word: "tàu" },
-  { id: "13", word: "bánh" },
-  { id: "14", word: "sách" },
-  { id: "15", word: "sao" },
-  { id: "16", word: "trăng" },
-  { id: "17", word: "tay" },
-  { id: "18", word: "mắt" },
-  { id: "19", word: "tai" },
-  { id: "20", word: "mũi" },
-];
-
-// Mock API chấm điểm (tạm thời)
-async function mockScore(word: string, audioBlob: Blob): Promise<number> {
-  return Math.floor(60 + Math.random() * 40); // điểm 60–100
-}
+import { WORD_BANK, WordItem } from "@/data/wordBank";
+// ...existing code...
 
 export default function PronunciationGame() {
   useSetPageHeader({
@@ -39,7 +13,7 @@ export default function PronunciationGame() {
     streakCount: 5,
   });
 
-  const [roundWords, setRoundWords] = useState(WORD_BANK.slice(0, 5));
+  const [roundWords, setRoundWords] = useState<WordItem[]>([]);
   const [round, setRound] = useState(0);
   const [score, setScore] = useState<number | null>(null);
   const [recording, setRecording] = useState(false);
@@ -47,12 +21,39 @@ export default function PronunciationGame() {
 
   const THRESHOLD = 70;
 
+  // Tạo bộ 5 từ mỗi lần chơi
   useEffect(() => {
-    const shuffled = [...WORD_BANK].sort(() => Math.random() - 0.5);
-    setRoundWords(shuffled.slice(0, 5));
+    const easyWords = WORD_BANK.filter((w) => w.difficulty === "easy")
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 2);
+
+    const mediumWords = WORD_BANK.filter((w) => w.difficulty === "medium")
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 2);
+
+    const hardWords = WORD_BANK.filter((w) => w.difficulty === "hard")
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 1);
+
+    setRoundWords(
+      [...easyWords, ...mediumWords, ...hardWords].sort(
+        () => Math.random() - 0.5,
+      ),
+    );
   }, []);
 
   const currentWord = roundWords[round];
+
+  // ⭐⭐⭐ FIX CHÍNH  — NGĂN TRẮNG MÀN HÌNH ⭐⭐⭐
+  if (!currentWord) {
+    return (
+      <div className="min-h-screen p-6 bg-background flex justify-center">
+        <div className="max-w-xl w-full bg-card p-6 rounded-3xl shadow-lg text-center">
+          <p className="text-xl font-bold">⏳ Đang tải câu hỏi...</p>
+        </div>
+      </div>
+    );
+  }
 
   // TTS đọc từ
   const speak = (text: string) => {
@@ -61,6 +62,11 @@ export default function PronunciationGame() {
     msg.rate = 1;
     window.speechSynthesis.speak(msg);
   };
+
+  // Mock API chấm điểm (tạm thời)
+  async function mockScore(word: string, audioBlob: Blob): Promise<number> {
+    return Math.floor(60 + Math.random() * 40); // 60–100
+  }
 
   // Bắt đầu ghi âm
   const startRecording = async () => {
@@ -74,9 +80,8 @@ export default function PronunciationGame() {
       const blob = new Blob(chunks, { type: "audio/webm" });
       setAudioURL(URL.createObjectURL(blob));
 
-      // Gửi audio lên server scoring (tạm mock)
-      const score = await mockScore(currentWord.word, blob);
-      setScore(score);
+      const scoreValue = await mockScore(currentWord.word, blob);
+      setScore(scoreValue);
     };
 
     recorder.start();
@@ -85,7 +90,7 @@ export default function PronunciationGame() {
     setTimeout(() => {
       recorder.stop();
       setRecording(false);
-    }, 2000); // ghi 2 giây
+    }, 2000);
   };
 
   const nextWord = () => {
@@ -99,12 +104,79 @@ export default function PronunciationGame() {
   };
 
   const reset = () => {
-    const shuffled = [...WORD_BANK].sort(() => Math.random() - 0.5);
-    setRoundWords(shuffled.slice(0, 5));
+    const easyWords = WORD_BANK.filter((w) => w.difficulty === "easy")
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 2);
+
+    const mediumWords = WORD_BANK.filter((w) => w.difficulty === "medium")
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 2);
+
+    const hardWords = WORD_BANK.filter((w) => w.difficulty === "hard")
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 1);
+
+    setRoundWords(
+      [...easyWords, ...mediumWords, ...hardWords].sort(
+        () => Math.random() - 0.5,
+      ),
+    );
+
     setRound(0);
     setScore(null);
     setAudioURL(null);
   };
+
+  // --- SVG emoji ---
+  const HappyFace = ({ className = "w-20 h-20" }: { className?: string }) => (
+    <svg viewBox="0 0 64 64" fill="none" className={className}>
+      <circle cx="32" cy="32" r="30" fill="#D1FAE5" />
+      <path
+        d="M20 26c0 3 4 3 4 0"
+        stroke="#065F46"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M44 26c0 3-4 3-4 0"
+        stroke="#065F46"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M20 42c6 6 18 6 24 0"
+        stroke="#065F46"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+
+  const SadFace = ({ className = "w-20 h-20" }: { className?: string }) => (
+    <svg viewBox="0 0 64 64" fill="none" className={className}>
+      <circle cx="32" cy="32" r="30" fill="#FEE2E2" />
+      <path
+        d="M20 26c0 3 4 3 4 0"
+        stroke="#991B1B"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M44 26c0 3-4 3-4 0"
+        stroke="#991B1B"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M20 46c6-6 18-6 24 0"
+        stroke="#991B1B"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 
   return (
     <div className="min-h-screen p-6 bg-background flex justify-center">
@@ -137,7 +209,15 @@ export default function PronunciationGame() {
 
         {/* Result */}
         {score !== null && (
-          <div className="mt-6">
+          <div className="mt-6 flex flex-col items-center gap-4">
+            <div>
+              {score >= THRESHOLD ? (
+                <HappyFace className="w-24 h-24" />
+              ) : (
+                <SadFace className="w-24 h-24" />
+              )}
+            </div>
+
             <p className="text-2xl font-bold">
               Điểm phát âm: <span>{score}</span>/100
             </p>
@@ -167,3 +247,4 @@ export default function PronunciationGame() {
     </div>
   );
 }
+// ...existing code...
