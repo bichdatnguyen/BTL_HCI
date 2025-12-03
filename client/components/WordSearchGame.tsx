@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { HelpCircle, ArrowLeft, Volume2 } from "lucide-react";
+import { HelpCircle, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useSetPageHeader } from "@/contexts/HeaderContext";
 import { WORD_SEARCH_WORDS, WordSearchWord } from "@/data/wordSearchData";
 
-interface FoundWord {
-  word: string;
+interface PlacedWord {
+  id: string;
+  word: string; // normalized (no spaces)
   cells: Array<[number, number]>;
 }
 
@@ -19,138 +20,121 @@ interface GameConfig {
 }
 
 const difficultyConfig: Record<Difficulty, GameConfig> = {
-  easy: { difficulty: "easy", gridSize: 10, maxAttempts: 150 },
-  medium: { difficulty: "medium", gridSize: 12, maxAttempts: 120 },
-  hard: { difficulty: "hard", gridSize: 14, maxAttempts: 100 },
+  easy: { difficulty: "easy", gridSize: 10, maxAttempts: 200 },
+  medium: { difficulty: "medium", gridSize: 12, maxAttempts: 160 },
+  hard: { difficulty: "hard", gridSize: 14, maxAttempts: 120 },
 };
 
-// Tạo grid ngẫu nhiên với các từ được cố định
+const normalize = (s: string) => s.replace(/\s+/g, "");
+
 const generateGridWithWords = (words: WordSearchWord[], config: GameConfig) => {
   const GRID_SIZE = config.gridSize;
-  const grid: string[][] = Array(GRID_SIZE)
-    .fill(null)
-    .map(() => Array(GRID_SIZE).fill(""));
+  const grid: string[][] = Array.from({ length: GRID_SIZE }, () =>
+    Array.from({ length: GRID_SIZE }, () => ""),
+  );
 
-  const placedWords: FoundWord[] = [];
+  const placedWords: PlacedWord[] = [];
   const alphabet =
     "AÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ";
 
-  // Hàm kiểm tra có thể đặt từ tại vị trí
+  const directions: Record<Direction, [number, number]> = {
+    horizontal: [0, 1],
+    vertical: [1, 0],
+    diagonalDown: [1, 1],
+    diagonalUp: [-1, 1],
+  };
+
   const canPlaceWord = (
     word: string,
     row: number,
     col: number,
     direction: Direction,
-  ): boolean => {
-    const directions: Record<Direction, [number, number]> = {
-      horizontal: [0, 1],
-      vertical: [1, 0],
-      diagonalDown: [1, 1],
-      diagonalUp: [-1, 1],
-    };
-
+  ) => {
     const [dRow, dCol] = directions[direction];
 
-    // Kiểm tra xem từ có nằm trong grid không
-    if (direction === "horizontal") {
-      if (col + word.length > GRID_SIZE) return false;
-    } else if (direction === "vertical") {
-      if (row + word.length > GRID_SIZE) return false;
-    } else if (direction === "diagonalDown") {
-      if (row + word.length > GRID_SIZE || col + word.length > GRID_SIZE)
-        return false;
-    } else if (direction === "diagonalUp") {
-      if (row - word.length + 1 < 0 || col + word.length > GRID_SIZE)
-        return false;
-    }
+    // boundary check
+    const endRow = row + dRow * (word.length - 1);
+    const endCol = col + dCol * (word.length - 1);
+    if (endRow < 0 || endRow >= GRID_SIZE || endCol < 0 || endCol >= GRID_SIZE)
+      return false;
 
-    // Kiểm tra va chạm với các từ khác
+    // collision check (allow same letter)
     for (let i = 0; i < word.length; i++) {
       const r = row + dRow * i;
       const c = col + dCol * i;
-
       const cell = grid[r][c];
       if (cell !== "" && cell !== word[i]) return false;
     }
-
     return true;
   };
 
-  // Hàm đặt từ vào grid
   const placeWord = (
+    id: string,
     word: string,
     row: number,
     col: number,
     direction: Direction,
   ) => {
-    const directions: Record<Direction, [number, number]> = {
-      horizontal: [0, 1],
-      vertical: [1, 0],
-      diagonalDown: [1, 1],
-      diagonalUp: [-1, 1],
-    };
-
     const [dRow, dCol] = directions[direction];
     const cells: Array<[number, number]> = [];
-
     for (let i = 0; i < word.length; i++) {
       const r = row + dRow * i;
       const c = col + dCol * i;
       grid[r][c] = word[i];
       cells.push([r, c]);
     }
-
-    placedWords.push({ word, cells });
+    placedWords.push({ id, word, cells });
   };
 
-  // Sắp xếp từ theo độ dài giảm dần để đặt từ dài trước
-  const sortedWords = [...words]
-    .map((word) => ({
-      ...word,
-      text: word.text.replace(/\s+/g, ""), // Xóa tất cả khoảng trắng
-    }))
-    .sort((a, b) => b.text.length - a.text.length);
+  // normalize and sort by length (longer first)
+  const normalized = words
+    .map((w) => ({ ...w, normalized: normalize(w.text) }))
+    .sort((a, b) => b.normalized.length - a.normalized.length);
 
-  // Đặt từ vào grid
-  for (const wordObj of sortedWords) {
+  for (const w of normalized) {
+    const word = w.normalized;
     let placed = false;
-    const directions: Direction[] = [
-      "horizontal",
-      "vertical",
-      "diagonalDown",
-      "diagonalUp",
-    ];
 
-    // Thử tất cả vị trí và hướng
+    // random attempts
     for (let attempt = 0; attempt < config.maxAttempts && !placed; attempt++) {
       const row = Math.floor(Math.random() * GRID_SIZE);
       const col = Math.floor(Math.random() * GRID_SIZE);
-      const direction =
-        directions[Math.floor(Math.random() * directions.length)];
-
-      if (canPlaceWord(wordObj.text, row, col, direction)) {
-        placeWord(wordObj.text, row, col, direction);
+      const dirList: Direction[] = [
+        "horizontal",
+        "vertical",
+        "diagonalDown",
+        "diagonalUp",
+      ];
+      const dir = dirList[Math.floor(Math.random() * dirList.length)];
+      if (canPlaceWord(word, row, col, dir)) {
+        placeWord(w.id, word, row, col, dir);
         placed = true;
       }
     }
 
-    // Nếu không tìm được vị trí ngẫu nhiên, thử tất cả vị trí có sẵn
+    // brute-force fallback
     if (!placed) {
-      outerLoop: for (let row = 0; row < GRID_SIZE && !placed; row++) {
-        for (let col = 0; col < GRID_SIZE && !placed; col++) {
-          for (const direction of directions) {
-            if (canPlaceWord(wordObj.text, row, col, direction)) {
-              placeWord(wordObj.text, row, col, direction);
+      outer: for (let r = 0; r < GRID_SIZE && !placed; r++) {
+        for (let c = 0; c < GRID_SIZE && !placed; c++) {
+          for (const dir of [
+            "horizontal",
+            "vertical",
+            "diagonalDown",
+            "diagonalUp",
+          ] as Direction[]) {
+            if (canPlaceWord(word, r, c, dir)) {
+              placeWord(w.id, word, r, c, dir);
               placed = true;
-              break outerLoop;
+              break outer;
             }
           }
         }
       }
     }
+    // if still not placed, skip (rare). Game will continue with fewer placed words.
   }
 
-  // Điền các ô trống bằng chữ cái ngẫu nhiên
+  // fill remaining cells
   for (let r = 0; r < GRID_SIZE; r++) {
     for (let c = 0; c < GRID_SIZE; c++) {
       if (grid[r][c] === "") {
@@ -175,51 +159,45 @@ export function WordSearchGame() {
   const [selectedWords, setSelectedWords] = useState<WordSearchWord[]>([]);
   const [gameData, setGameData] = useState<{
     grid: string[][];
-    placedWords: FoundWord[];
+    placedWords: PlacedWord[];
   } | null>(null);
   const [foundWords, setFoundWords] = useState<Set<string>>(new Set());
   const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
   const [showHelp, setShowHelp] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Chọn 5 từ ngẫu nhiên theo độ khó
   const selectRandomWords = (diff: Difficulty) => {
-    const wordsByDifficulty = WORD_SEARCH_WORDS.filter(
-      (w) => w.difficulty === diff,
-    );
-    const shuffled = [...wordsByDifficulty].sort(() => Math.random() - 0.5);
+    const pool = WORD_SEARCH_WORDS.filter((w) => w.difficulty === diff);
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, 5);
   };
 
-  // Bắt đầu game
-  const startGame = (selectedDifficulty: Difficulty) => {
-    setDifficulty(selectedDifficulty);
-    const words = selectRandomWords(selectedDifficulty);
+  const startGame = (diff: Difficulty) => {
+    setDifficulty(diff);
+    const words = selectRandomWords(diff);
     setSelectedWords(words);
-    const config = difficultyConfig[selectedDifficulty];
-    const newGameData = generateGridWithWords(words, config);
-    setGameData(newGameData);
+    const cfg = difficultyConfig[diff];
+    const data = generateGridWithWords(words, cfg);
+    setGameData(data);
     setFoundWords(new Set());
     setSelectedCells(new Set());
     setGameStarted(true);
   };
 
-  // Xử lý selection tất cả các hướng
   useEffect(() => {
     if (!gameData || selectedCells.size < 2) return;
 
     const selectedArray = Array.from(selectedCells)
-      .map((key) => key.split(",").map(Number) as [number, number])
+      .map((k) => k.split(",").map(Number) as [number, number])
+      // sort by row then col to get canonical order
       .sort((a, b) => (a[0] === b[0] ? a[1] - b[1] : a[0] - b[0]));
 
-    // Kiểm tra từng từ đã được đặt
-    for (const foundWord of gameData.placedWords) {
-      // Sắp xếp cells của từ
-      const wordCells = foundWord.cells.sort((a, b) =>
+    for (const placed of gameData.placedWords) {
+      const wordCells = [...placed.cells].sort((a, b) =>
         a[0] === b[0] ? a[1] - b[1] : a[0] - b[0],
       );
 
-      // Kiểm tra chiều thuận (trái sang phải, trên xuống dưới, chéo)
+      // forward match
       if (
         selectedArray.length === wordCells.length &&
         selectedArray.every(
@@ -227,30 +205,27 @@ export function WordSearchGame() {
             cell[0] === wordCells[idx][0] && cell[1] === wordCells[idx][1],
         )
       ) {
-        const wordObj = selectedWords.find((w) => w.text === foundWord.word);
-        if (wordObj && !foundWords.has(wordObj.id)) {
-          setFoundWords((prev) => new Set([...prev, wordObj.id]));
-          setSelectedCells(new Set());
-          return;
+        if (!foundWords.has(placed.id)) {
+          setFoundWords((prev) => new Set(prev).add(placed.id));
         }
+        setSelectedCells(new Set());
+        return;
       }
 
-      // Kiểm tra chiều ngược (phải sang trái, dưới lên trên, chéo ngược)
-      const reversedCells = [...wordCells].reverse();
+      // reverse match
+      const reversed = [...wordCells].reverse();
       if (
-        selectedArray.length === reversedCells.length &&
+        selectedArray.length === reversed.length &&
         selectedArray.every(
           (cell, idx) =>
-            cell[0] === reversedCells[idx][0] &&
-            cell[1] === reversedCells[idx][1],
+            cell[0] === reversed[idx][0] && cell[1] === reversed[idx][1],
         )
       ) {
-        const wordObj = selectedWords.find((w) => w.text === foundWord.word);
-        if (wordObj && !foundWords.has(wordObj.id)) {
-          setFoundWords((prev) => new Set([...prev, wordObj.id]));
-          setSelectedCells(new Set());
-          return;
+        if (!foundWords.has(placed.id)) {
+          setFoundWords((prev) => new Set(prev).add(placed.id));
         }
+        setSelectedCells(new Set());
+        return;
       }
     }
   }, [selectedCells, gameData, foundWords, selectedWords]);
@@ -262,46 +237,43 @@ export function WordSearchGame() {
 
   const handleCellMouseEnter = (row: number, col: number) => {
     if (!isDragging) return;
-    setSelectedCells((prev) => new Set([...prev, `${row},${col}`]));
+    setSelectedCells((prev) => new Set(prev).add(`${row},${col}`));
   };
 
   const handleCellMouseUp = () => {
     setIsDragging(false);
   };
 
+  // touch support (basic)
+  const handleTouchStart = (row: number, col: number) => {
+    handleCellMouseDown(row, col);
+  };
+  const handleTouchMove = (ev: React.TouchEvent, row: number, col: number) => {
+    ev.preventDefault();
+    handleCellMouseEnter(row, col);
+  };
+  const handleTouchEnd = () => {
+    handleCellMouseUp();
+  };
+
   const toggleCellSelection = (row: number, col: number) => {
-    const cellKey = `${row},${col}`;
-    const newSelected = new Set(selectedCells);
-
-    if (newSelected.has(cellKey)) {
-      newSelected.delete(cellKey);
-    } else {
-      newSelected.add(cellKey);
-    }
-
-    setSelectedCells(newSelected);
+    const key = `${row},${col}`;
+    setSelectedCells((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   };
 
-  const isCellHighlighted = (row: number, col: number): boolean => {
-    return selectedCells.has(`${row},${col}`);
-  };
+  const isCellHighlighted = (row: number, col: number) =>
+    selectedCells.has(`${row},${col}`);
 
-  const isCellPartOfFoundWord = (row: number, col: number): boolean => {
+  const isCellPartOfFoundWord = (row: number, col: number) => {
     if (!gameData) return false;
-
-    for (const wordId of foundWords) {
-      const wordObj = selectedWords.find((w) => w.id === wordId);
-      if (wordObj) {
-        const foundWord = gameData.placedWords.find(
-          (fw) => fw.word === wordObj.text,
-        );
-        if (
-          foundWord &&
-          foundWord.cells.some((cell) => cell[0] === row && cell[1] === col)
-        ) {
-          return true;
-        }
-      }
+    for (const id of foundWords) {
+      const p = gameData.placedWords.find((pw) => pw.id === id);
+      if (p && p.cells.some((c) => c[0] === row && c[1] === col)) return true;
     }
     return false;
   };
@@ -314,7 +286,6 @@ export function WordSearchGame() {
     startGame(difficulty);
   };
 
-  // Difficulty selection screen
   if (!gameStarted) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -329,7 +300,6 @@ export function WordSearchGame() {
           </div>
 
           <div className="space-y-4">
-            {/* EASY */}
             <button
               onClick={() => startGame("easy")}
               className="w-full bg-card border-2 border-border rounded-3xl p-8 hover:border-primary hover:shadow-lg transition-all text-center"
@@ -344,7 +314,6 @@ export function WordSearchGame() {
               </p>
             </button>
 
-            {/* MEDIUM */}
             <button
               onClick={() => startGame("medium")}
               className="w-full bg-card border-2 border-border rounded-3xl p-8 hover:border-primary hover:shadow-lg transition-all text-center"
@@ -361,7 +330,6 @@ export function WordSearchGame() {
               </p>
             </button>
 
-            {/* HARD */}
             <button
               onClick={() => startGame("hard")}
               className="w-full bg-card border-2 border-border rounded-3xl p-8 hover:border-primary hover:shadow-lg transition-all text-center"
@@ -388,7 +356,6 @@ export function WordSearchGame() {
     );
   }
 
-  // Game screen
   if (!gameData) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -404,7 +371,6 @@ export function WordSearchGame() {
       className="min-h-screen bg-background flex flex-col"
       onMouseLeave={() => setIsDragging(false)}
     >
-      {/* Header */}
       <div className="bg-card shadow-sm border-b border-border p-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -444,27 +410,22 @@ export function WordSearchGame() {
         </div>
       </div>
 
-      {/* Help Message */}
       {showHelp && (
         <div className="bg-secondary/30 border-b border-secondary p-4">
           <div className="max-w-7xl mx-auto">
             <p className="text-foreground font-semibold mb-2">💡 Gợi ý:</p>
             <p className="text-muted-foreground">
-              Kéo chuột hoặc nhấp để chọn các chữ cái. Từ có thể nằm: trái sang
-              phải, phải sang trái, trên xuống dưới, dưới lên trên, hoặc chéo
-              theo cả 2 hướng!
+              Kéo chuột hoặc nhấp để chọn các chữ cái. Từ có thể nằm: trái→phải,
+              phải→trái, trên→dưới, dưới→trên, hoặc chéo.
             </p>
           </div>
         </div>
       )}
 
-      {/* Game Content */}
       <div className="flex-1 flex items-center justify-center p-6 md:p-12">
         <div className="max-w-6xl w-full">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-            {/* Left: Word Search Grid */}
             <div className="lg:col-span-2">
-              {/* Progress Bar */}
               <div className="mb-8">
                 <div className="flex justify-between items-center mb-2">
                   <p className="text-sm font-semibold text-foreground">
@@ -482,7 +443,6 @@ export function WordSearchGame() {
                 </div>
               </div>
 
-              {/* Grid */}
               <div className="bg-card rounded-3xl p-8 shadow-lg overflow-x-auto select-none">
                 <div className="inline-block">
                   <div
@@ -501,7 +461,6 @@ export function WordSearchGame() {
                           rowIndex,
                           colIndex,
                         );
-
                         return (
                           <button
                             key={`${rowIndex},${colIndex}`}
@@ -512,6 +471,13 @@ export function WordSearchGame() {
                               handleCellMouseEnter(rowIndex, colIndex)
                             }
                             onMouseUp={handleCellMouseUp}
+                            onTouchStart={() =>
+                              handleTouchStart(rowIndex, colIndex)
+                            }
+                            onTouchMove={(e) =>
+                              handleTouchMove(e, rowIndex, colIndex)
+                            }
+                            onTouchEnd={handleTouchEnd}
                             onClick={() =>
                               toggleCellSelection(rowIndex, colIndex)
                             }
@@ -534,27 +500,19 @@ export function WordSearchGame() {
               </div>
             </div>
 
-            {/* Right: Word List */}
             <div>
               <h2 className="text-2xl font-bold text-foreground mb-6">
                 Tìm những từ:
               </h2>
 
               <div className="space-y-3 flex flex-col max-h-[600px] overflow-y-auto">
-                {selectedWords.map((word) => (
-                  <div
-                    key={word.id}
-                    className="bg-card rounded-2xl p-4 shadow-md"
-                  >
+                {selectedWords.map((w) => (
+                  <div key={w.id} className="bg-card rounded-2xl p-4 shadow-md">
                     <div className="flex items-start gap-3">
                       <div
-                        className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all flex-shrink-0 mt-0.5 ${
-                          foundWords.has(word.id)
-                            ? "bg-success border-success"
-                            : "border-border bg-background"
-                        }`}
+                        className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all flex-shrink-0 mt-0.5 ${foundWords.has(w.id) ? "bg-success border-success" : "border-border bg-background"}`}
                       >
-                        {foundWords.has(word.id) && (
+                        {foundWords.has(w.id) && (
                           <span className="text-white text-sm font-bold">
                             ✓
                           </span>
@@ -562,16 +520,12 @@ export function WordSearchGame() {
                       </div>
                       <div className="flex-1">
                         <p
-                          className={`text-lg font-bold transition-all ${
-                            foundWords.has(word.id)
-                              ? "line-through text-muted-foreground"
-                              : "text-foreground"
-                          }`}
+                          className={`text-lg font-bold transition-all ${foundWords.has(w.id) ? "line-through text-muted-foreground" : "text-foreground"}`}
                         >
-                          {word.text}
+                          {w.text}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {word.hint}
+                          {w.hint}
                         </p>
                       </div>
                     </div>
@@ -579,7 +533,6 @@ export function WordSearchGame() {
                 ))}
               </div>
 
-              {/* Completion Message */}
               {completedWords === totalWords && (
                 <div className="mt-8 bg-success/20 border-2 border-success rounded-3xl p-6 text-center animate-pulse">
                   <p className="text-2xl font-bold text-success">
@@ -591,15 +544,12 @@ export function WordSearchGame() {
                 </div>
               )}
 
-              {/* Reset Button */}
               <button
                 onClick={resetGame}
                 className="w-full mt-8 px-6 py-3 bg-secondary text-secondary-foreground rounded-full font-bold hover:opacity-90 transition-opacity"
               >
                 Chơi lại
               </button>
-
-              {/* Change Difficulty Button */}
               <button
                 onClick={() => setGameStarted(false)}
                 className="w-full mt-3 px-6 py-3 bg-muted text-foreground rounded-full font-bold hover:opacity-90 transition-opacity"
