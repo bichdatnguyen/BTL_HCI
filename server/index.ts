@@ -36,7 +36,8 @@ const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   streak: { type: Number, default: 0 },        // Mặc định là 0
-  lastLoginDate: { type: Date, default: null }
+  lastLoginDate: { type: Date, default: null },
+  role: { type: String, default: "user" }
 });
 const UserModel = mongoose.model("users", UserSchema);
 
@@ -161,7 +162,8 @@ app.post("/login", async (req, res) => {
     res.json({
       message: "Đăng nhập thành công",
       userId: user._id,
-      streak: currentStreak // Gửi streak về frontend để hiển thị
+      streak: currentStreak, // Gửi streak về frontend để hiển thị
+      role: user.role
     });
 
   } catch (err) {

@@ -1,5 +1,5 @@
 import "./global.css";
-
+import { Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Sidebar } from "@/components/Sidebar";
 import { PageHeader } from "@/components/PageHeader";
+import { AdminLayout } from "@/components/AdminLayout";
 import { HeaderProvider, usePageHeader } from "@/contexts/HeaderContext";
 import { ProfileProvider } from "@/contexts/ProfileContext";
 import Index from "./pages/Index";
@@ -18,9 +19,24 @@ import WordSearch from "./pages/WordSearch";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import BookReader from "./pages/BookReader";
+import PronunciationPage from "./pages/Pronunciation";
+import AdminDashboard from "./pages/AdminDashboard";
 
 import ManageProfiles from "./pages/ManageProfiles";
 import NotFound from "./pages/NotFound";
+
+// Component này đóng vai trò "Bảo vệ"
+const AdminRoute = ({ children }: { children: JSX.Element }) => {
+  const role = localStorage.getItem("role"); // Lấy quyền từ bộ nhớ
+
+  if (role !== "admin") {
+    // Nếu không phải admin, đá về trang chủ
+    return <Navigate to="/" replace />;
+  }
+
+  // Nếu đúng là admin, cho phép vào
+  return children;
+};
 
 const queryClient = new QueryClient();
 
@@ -40,7 +56,6 @@ function Layout({ children }: { children: React.ReactNode }) {
               userName={header.userName}
               userAvatar={header.userAvatar}
               streakCount={header.streakCount}
-
             />
           </div>
         )}
@@ -66,14 +81,8 @@ export default function App() {
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route
-                  path="/manage-profiles"
-                  element={
-                    <Layout>
-                      <ManageProfiles />
-                    </Layout>
-                  }
-                />
+
+
                 <Route
                   path="/"
                   element={
@@ -82,22 +91,7 @@ export default function App() {
                     </Layout>
                   }
                 />
-                <Route
-                  path="/games/matching"
-                  element={
-                    <Layout>
-                      <WordMatching />
-                    </Layout>
-                  }
-                />
-                <Route
-                  path="/games/word-search"
-                  element={
-                    <Layout>
-                      <WordSearch />
-                    </Layout>
-                  }
-                />
+
                 <Route
                   path="/games"
                   element={
@@ -106,6 +100,35 @@ export default function App() {
                     </Layout>
                   }
                 />
+
+                <Route
+                  path="/games/matching"
+                  element={
+                    <Layout>
+                      <WordMatching />
+                    </Layout>
+                  }
+                />
+
+                <Route
+                  path="/games/word-search"
+                  element={
+                    <Layout>
+                      <WordSearch />
+                    </Layout>
+                  }
+                />
+
+                {/* Đảm bảo route này nằm sau /games */}
+                <Route
+                  path="/games/pronunciation"
+                  element={
+                    <Layout>
+                      <PronunciationPage />
+                    </Layout>
+                  }
+                />
+
                 <Route
                   path="/library"
                   element={
@@ -115,10 +138,38 @@ export default function App() {
                   }
                 />
 
-                <Route path="/read/:bookId" element={<BookReader />} />
+                {/* Các route động - để xuống dưới cùng */}
+                <Route
+                  path="/category/:categoryName"
+                  element={
+                    <Layout>
+                      <CategoryView />
+                    </Layout>
+                  }
+                />
 
-                <Route path="/category/:categoryName" element={<CategoryView />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                {/* BookReader cũng nên có Layout nếu bạn muốn sidebar */}
+                <Route
+                  path="/read/:bookId"
+                  element={
+                    <Layout>
+                      <BookReader />
+                    </Layout>
+                  }
+                />
+
+                <Route
+                  path="/admin"
+                  element={
+                    <AdminRoute>
+                      <AdminLayout>
+                        <AdminDashboard />
+                      </AdminLayout>
+                    </AdminRoute>
+                  }
+                />
+
+                {/* Catch-all cuối cùng */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </HeaderProvider>

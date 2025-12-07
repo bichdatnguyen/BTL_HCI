@@ -1,0 +1,73 @@
+export type WordItem = {
+  id: string;
+  word: string;
+  difficulty: "easy" | "medium" | "hard"; // độ khó
+};
+
+export const WORD_BANK: WordItem[] = [
+  // EASY
+  { id: "1", word: "ba", difficulty: "easy" },
+  { id: "2", word: "bé", difficulty: "easy" },
+  { id: "3", word: "bò", difficulty: "easy" },
+  { id: "4", word: "bàn", difficulty: "easy" },
+  { id: "5", word: "bút", difficulty: "easy" },
+  { id: "6", word: "cá", difficulty: "easy" },
+  { id: "7", word: "cô", difficulty: "easy" },
+  { id: "8", word: "cốc", difficulty: "easy" },
+  { id: "9", word: "cây", difficulty: "easy" },
+  { id: "10", word: "cốm", difficulty: "easy" },
+  { id: "11", word: "gà", difficulty: "easy" },
+  { id: "12", word: "gỗ", difficulty: "easy" },
+  { id: "13", word: "gối", difficulty: "easy" },
+  { id: "14", word: "gạo", difficulty: "easy" },
+  { id: "15", word: "gương", difficulty: "easy" },
+  { id: "16", word: "mèo", difficulty: "easy" },
+  { id: "17", word: "mẹ", difficulty: "easy" },
+  { id: "18", word: "má", difficulty: "easy" },
+  { id: "19", word: "mũ", difficulty: "easy" },
+  { id: "20", word: "mít", difficulty: "easy" },
+
+  // MEDIUM
+  { id: "21", word: "trâu", difficulty: "medium" },
+  { id: "22", word: "tre", difficulty: "medium" },
+  { id: "23", word: "trứng", difficulty: "medium" },
+  { id: "24", word: "trăng", difficulty: "medium" },
+  { id: "25", word: "trời", difficulty: "medium" },
+  { id: "26", word: "thỏ", difficulty: "medium" },
+  { id: "27", word: "thuyền", difficulty: "medium" },
+  { id: "28", word: "thơm", difficulty: "medium" },
+  { id: "29", word: "thuốc", difficulty: "medium" },
+  { id: "30", word: "thang", difficulty: "medium" },
+  { id: "31", word: "phơ", difficulty: "medium" },
+  { id: "32", word: "pháo", difficulty: "medium" },
+  { id: "33", word: "phòng", difficulty: "medium" },
+  { id: "34", word: "phấn", difficulty: "medium" },
+  { id: "35", word: "phin", difficulty: "medium" },
+  { id: "36", word: "nhà", difficulty: "medium" },
+  { id: "37", word: "nhôm", difficulty: "medium" },
+  { id: "38", word: "nhím", difficulty: "medium" },
+  { id: "39", word: "nhạc", difficulty: "medium" },
+  { id: "40", word: "nhãn", difficulty: "medium" },
+
+  // HARD
+  { id: "41", word: "sữa", difficulty: "hard" },
+  { id: "42", word: "suối", difficulty: "hard" },
+  { id: "43", word: "sỏi", difficulty: "hard" },
+  { id: "44", word: "sấm", difficulty: "hard" },
+  { id: "45", word: "sách", difficulty: "hard" },
+  { id: "46", word: "xôi", difficulty: "hard" },
+  { id: "47", word: "xào", difficulty: "hard" },
+  { id: "48", word: "xanh", difficulty: "hard" },
+  { id: "49", word: "xeo", difficulty: "hard" },
+  { id: "50", word: "xốp", difficulty: "hard" },
+  { id: "51", word: "giấy", difficulty: "hard" },
+  { id: "52", word: "giỏ", difficulty: "hard" },
+  { id: "53", word: "giường", difficulty: "hard" },
+  { id: "54", word: "giọt", difficulty: "hard" },
+  { id: "55", word: "giếng", difficulty: "hard" },
+  { id: "56", word: "ngà", difficulty: "hard" },
+  { id: "57", word: "nghé", difficulty: "hard" },
+  { id: "58", word: "ngọc", difficulty: "hard" },
+  { id: "59", word: "ngon", difficulty: "hard" },
+  { id: "60", word: "nghỉ", difficulty: "hard" },
+];

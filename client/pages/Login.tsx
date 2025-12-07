@@ -28,8 +28,15 @@ export default function Login() {
         // Lưu userId vào bộ nhớ trình duyệt để dùng cho các trang sau
         localStorage.setItem("userId", data.userId);
         localStorage.setItem("currentStreak", data.streak);
+
+        localStorage.setItem("role", data.role);
+
         // Chuyển hướng sang trang chọn hồ sơ
-        navigate("/");
+        if (data.role === "admin") {
+          navigate("/admin");
+        } else {
+          navigate("/profile-selection");
+        }
       } else {
         // Hiển thị lỗi từ server trả về (ví dụ: Sai mật khẩu)
         setError(data.message || "Đăng nhập thất bại");
