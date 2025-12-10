@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"; // 1. Thêm dòng này
+import { useState, useEffect } from "react";
 import { useSetPageHeader } from "@/contexts/HeaderContext";
 import { useProfile } from "@/contexts/ProfileContext";
 import { ProgressSection } from "@/components/ProgressSection";
@@ -8,23 +8,36 @@ import { LibrarySection } from "@/components/LibrarySection";
 export default function Index() {
   const { selectedProfile } = useProfile();
 
-  // 2. Tạo biến lưu streak (mặc định là 0)
+  // 1. Tạo state để lưu tên và streak
   const [streak, setStreak] = useState(0);
+  const [displayName, setDisplayName] = useState("bạn nhỏ"); // Tên mặc định
 
-  // 3. Lấy dữ liệu từ bộ nhớ khi trang vừa tải xong
+  // 2. Lấy dữ liệu từ localStorage khi trang vừa tải
   useEffect(() => {
+    // Lấy Streak
     const savedStreak = localStorage.getItem("currentStreak");
     if (savedStreak) {
-      setStreak(parseInt(savedStreak)); // Chuyển chữ thành số
+      setStreak(parseInt(savedStreak));
     }
-  }, []);
 
-  // 4. Cập nhật Header với số streak thật
+    // --- MỚI THÊM: Lấy Tên hiển thị ---
+    const savedName = localStorage.getItem("userName");
+    if (savedName) {
+      setDisplayName(savedName);
+    } else if (selectedProfile?.name) {
+      // Nếu không có trong bộ nhớ thì lấy từ Profile Context (nếu có)
+      setDisplayName(selectedProfile.name);
+    }
+    // ----------------------------------
+  }, [selectedProfile]);
+
+  // 3. Cập nhật Header với tên thật
   useSetPageHeader({
     title: "Xin chào! 👋",
-    subtitle: `Hôm nay ${selectedProfile?.name} sẽ học gì?`,
-    userName: selectedProfile?.initials || "T",
-    streakCount: streak, // <--- ĐỔI TỪ SỐ 5 THÀNH BIẾN streak
+    // Sửa dòng này: Thay chữ cứng hoặc biến cũ bằng biến `displayName`
+    subtitle: `Hôm nay ${displayName} sẽ học gì?`,
+    userName: selectedProfile?.initials || displayName.charAt(0).toUpperCase() || "T",
+    streakCount: streak,
   });
 
   return (

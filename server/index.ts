@@ -37,7 +37,10 @@ const UserSchema = new mongoose.Schema({
   password: { type: String, required: true },
   streak: { type: Number, default: 0 },        // Mặc định là 0
   lastLoginDate: { type: Date, default: null },
-  role: { type: String, default: "user" }
+  role: { type: String, default: "user" },
+  name: { type: String, default: "" },          // Tên hiển thị (Tên của tớ)
+  avatar: { type: String, default: "🐶" },      // Avatar mặc định là Chó
+  birthday: { type: String, default: "" }       // Ngày sinh
 });
 const UserModel = mongoose.model("users", UserSchema);
 
@@ -54,6 +57,9 @@ const PersonalBookSchema = new mongoose.Schema({
     ref: 'users',
     required: true
   },
+  author: { type: String, default: "Đóng góp" }, // Tên tác giả sách
+  uploadedBy: { type: String }, // Tên đăng nhập người upload (để Admin biết ai gửi)
+  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, // Mặc định là chờ duyệt
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -159,11 +165,16 @@ app.post("/login", async (req, res) => {
     // =========================================================
 
     // Trả về kết quả
+    const displayName = user.name || user.username;
+
     res.json({
       message: "Đăng nhập thành công",
       userId: user._id,
       streak: currentStreak, // Gửi streak về frontend để hiển thị
-      role: user.role
+      role: user.role,
+      name: displayName,
+      avatar: user.avatar,
+      birthday: user.birthday
     });
 
   } catch (err) {
@@ -229,24 +240,22 @@ app.post('/api/books', async (req, res) => {
   }
 });
 
-// ==========================================
-// API XỬ LÝ SÁCH CÁ NHÂN
-// ==========================================
-
-// 1. API Lấy sách của TÔI (Chỉ lấy sách của user đang đăng nhập)
-// Frontend gọi: GET /api/my-books?userId=...
-app.get("/api/my-books", async (req, res) => {
+app.post("/api/my-books", async (req, res) => {
   try {
-    const { userId } = req.query; // Frontend phải gửi kèm userId lên
+    // Nhận thêm uploadedBy từ frontend gửi lên
+    const { title, coverUrl, fileUrl, userId, uploadedBy } = req.body;
 
-    if (!userId) {
-      return res.status(400).json({ message: "Thiếu userId" });
-    }
+    const newBook = new PersonalBookModel({
+      title,
+      coverUrl,
+      fileUrl,
+      userId,
+      uploadedBy: uploadedBy || "Ẩn danh", // Lưu tên người upload
+      status: "pending" // Luôn luôn là pending khi mới up
+    });
 
-    // Tìm trong kho sách cá nhân, chỉ lấy cuốn nào có userId trùng khớp
-    const myBooks = await PersonalBookModel.find({ userId: userId }).sort({ createdAt: -1 });
-
-    res.json(myBooks);
+    await newBook.save();
+    res.status(201).json({ message: "Đã gửi sách chờ duyệt", book: newBook });
   } catch (err) {
     res.status(500).json({ message: "Lỗi: " + err.message });
   }
@@ -466,6 +475,75 @@ app.get('/api/books/:id', async (req, res) => {
     res.json(book);
   } catch (err) {
     res.status(500).json({ message: "Lỗi ID sách không hợp lệ" });
+  }
+});
+
+// ==========================================
+// API THỐNG KÊ (Dành cho Admin)
+// ==========================================
+
+app.get('/api/stats/users', async (req, res) => {
+  try {
+    // Hàm countDocuments({}) sẽ đếm tổng số dòng trong collection users
+    const count = await UserModel.countDocuments({});
+
+    // Trả về số lượng: { count: 5 }
+    res.json({ count });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi đếm user: " + err.message });
+  }
+});
+
+// API Cập nhật thông tin người dùng
+app.put("/api/users/profile", async (req, res) => {
+  try {
+    const { userId, name, avatar, birthday } = req.body;
+
+    const user = await UserModel.findById(userId);
+    if (!user) return res.status(404).json({ message: "User không tồn tại" });
+
+    // Cập nhật thông tin
+    user.name = name;
+    user.avatar = avatar;
+    user.birthday = birthday;
+
+    await user.save();
+
+    res.json({ message: "Cập nhật thành công", user });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi: " + err.message });
+  }
+});
+
+// --- ADMIN API ---
+
+// 1. Lấy danh sách sách đang chờ duyệt
+app.get("/api/admin/pending-books", async (req, res) => {
+  try {
+    const pendingBooks = await PersonalBookModel.find({ status: "pending" }).sort({ createdAt: -1 });
+    res.json(pendingBooks);
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi: " + err.message });
+  }
+});
+
+// 2. Duyệt sách (Approve)
+app.put("/api/admin/approve/:bookId", async (req, res) => {
+  try {
+    await PersonalBookModel.findByIdAndUpdate(req.params.bookId, { status: "approved" });
+    res.json({ message: "Đã duyệt sách thành công!" });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi: " + err.message });
+  }
+});
+
+// 3. Từ chối sách (Reject - Xóa luôn)
+app.delete("/api/admin/reject/:bookId", async (req, res) => {
+  try {
+    await PersonalBookModel.findByIdAndDelete(req.params.bookId);
+    res.json({ message: "Đã từ chối và xóa sách." });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi: " + err.message });
   }
 });
 

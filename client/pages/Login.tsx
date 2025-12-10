@@ -27,15 +27,18 @@ export default function Login() {
         // 3. Đăng nhập thành công
         // Lưu userId vào bộ nhớ trình duyệt để dùng cho các trang sau
         localStorage.setItem("userId", data.userId);
+        localStorage.setItem("username_login", username);
         localStorage.setItem("currentStreak", data.streak);
-
         localStorage.setItem("role", data.role);
+        localStorage.setItem("userName", data.name);     // Lưu tên
+        localStorage.setItem("userAvatar", data.avatar); // Lưu avatar
+        localStorage.setItem("userBirthday", data.birthday || "");
 
         // Chuyển hướng sang trang chọn hồ sơ
         if (data.role === "admin") {
           navigate("/admin");
         } else {
-          navigate("/profile-selection");
+          navigate("/");
         }
       } else {
         // Hiển thị lỗi từ server trả về (ví dụ: Sai mật khẩu)

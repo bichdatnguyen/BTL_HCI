@@ -1,37 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Users, BookOpen, FileText } from "lucide-react";
 import { ModerationCard, PendingBook } from "@/components/ModerationCard";
 import { BookDetailModal } from "@/components/BookDetailModal";
 import { ActivityLog, Activity } from "@/components/ActivityLog";
 import { AdminStatCard } from "@/components/AdminStatCard";
-
-// Mock data for pending books
-const PENDING_BOOKS: PendingBook[] = [
-    {
-        id: "1",
-        title: "Câu chuyện con gà",
-        author: "Nguyễn Văn A",
-        uploadedBy: "user_123",
-        thumbnail: "🐔",
-        status: "pending",
-    },
-    {
-        id: "2",
-        title: "Phiêu lưu trong rừng",
-        author: "Trần Thị B",
-        uploadedBy: "user_456",
-        thumbnail: "🌲",
-        status: "pending",
-    },
-    {
-        id: "3",
-        title: "Những ngôi sao trong đêm",
-        author: "Hoàng Văn C",
-        uploadedBy: "user_789",
-        thumbnail: "⭐",
-        status: "pending",
-    },
-];
 
 // Mock data for recent activities
 const RECENT_ACTIVITIES: Activity[] = [
@@ -41,64 +13,114 @@ const RECENT_ACTIVITIES: Activity[] = [
         timestamp: "2 phút trước",
         type: "user",
     },
-    {
-        id: "2",
-        message: "Sách \"Dế Mèn\" đã được duyệt và xuất bản.",
-        timestamp: "15 phút trước",
-        type: "book",
-    },
-    {
-        id: "3",
-        message: "User B hoàn thành bài tập \"Ghép Từ\".",
-        timestamp: "30 phút trước",
-        type: "exercise",
-    },
-    {
-        id: "4",
-        message: "Hệ thống sao lưu dữ liệu thành công.",
-        timestamp: "1 giờ trước",
-        type: "system",
-    },
-    {
-        id: "5",
-        message: "User C tải lên 3 cuốn sách mới.",
-        timestamp: "2 giờ trước",
-        type: "book",
-    },
+    // ... các activity mẫu khác giữ nguyên
 ];
 
+// 👉 SỬA LỖI Ở ĐÂY: Tạo một interface mới kế thừa PendingBook và thêm các trường còn thiếu
+interface ExtendedPendingBook extends PendingBook {
+    fullText?: string;
+    description?: string;
+}
+
 export default function AdminDashboard() {
-    const [selectedBook, setSelectedBook] = useState<PendingBook | null>(null);
+    // Sử dụng ExtendedPendingBook thay vì PendingBook gốc
+    const [pendingBooks, setPendingBooks] = useState<ExtendedPendingBook[]>([]);
+    const [selectedBook, setSelectedBook] = useState<ExtendedPendingBook | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [userCount, setUserCount] = useState<number | string>("...");
+
+    // Gọi API lấy số lượng người dùng
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const response = await fetch("http://localhost:5000/api/stats/users");
+                const data = await response.json();
+                setUserCount(data.count);
+            } catch (error) {
+                console.error("Lỗi lấy thống kê:", error);
+            }
+        };
+        fetchStats();
+    }, []);
+
+    // Gọi API lấy danh sách sách chờ duyệt
+    useEffect(() => {
+        const fetchPendingBooks = async () => {
+            try {
+                const response = await fetch("http://localhost:5000/api/admin/pending-books");
+                const data = await response.json();
+
+                // Map dữ liệu và ép kiểu sang ExtendedPendingBook
+                const formattedBooks: ExtendedPendingBook[] = data.map((book: any) => ({
+                    id: book._id,
+                    title: book.title,
+                    author: book.author || "Đóng góp",
+                    uploadedBy: book.uploadedBy || "Ẩn danh",
+                    thumbnail: book.coverUrl || "📚",
+                    status: book.status,
+                    // Bây giờ thêm fullText sẽ không bị lỗi nữa
+                    description: "Mô tả sách (đang cập nhật chức năng này).",
+                    fullText: book.content || "Chưa có nội dung chi tiết.",
+                }));
+
+                setPendingBooks(formattedBooks);
+            } catch (error) {
+                console.error("Lỗi tải sách chờ duyệt:", error);
+            }
+        };
+        fetchPendingBooks();
+    }, []);
 
     const handleViewBook = (bookId: string) => {
-        const book = PENDING_BOOKS.find((b) => b.id === bookId);
+        const book = pendingBooks.find((b) => b.id === bookId);
         if (book) {
             setSelectedBook(book);
             setIsModalOpen(true);
         }
     };
 
-    const handleApprove = (bookId: string) => {
-        console.log("Book approved:", bookId);
-        setIsModalOpen(false);
-        setSelectedBook(null);
+    // Xử lý Duyệt sách
+    const handleApprove = async (bookId: string) => {
+        try {
+            const response = await fetch(`http://localhost:5000/api/admin/approve/${bookId}`, {
+                method: "PUT",
+            });
+
+            if (response.ok) {
+                setPendingBooks((prev) => prev.filter((b) => b.id !== bookId));
+                setIsModalOpen(false);
+                setSelectedBook(null);
+            }
+        } catch (error) {
+            console.error("Lỗi kết nối server khi duyệt:", error);
+        }
     };
 
-    const handleReject = (bookId: string) => {
-        console.log("Book rejected:", bookId);
-        setIsModalOpen(false);
-        setSelectedBook(null);
+    // Xử lý Từ chối sách
+    const handleReject = async (bookId: string) => {
+        try {
+            const response = await fetch(`http://localhost:5000/api/admin/reject/${bookId}`, {
+                method: "DELETE",
+            });
+
+            if (response.ok) {
+                setPendingBooks((prev) => prev.filter((b) => b.id !== bookId));
+                setIsModalOpen(false);
+                setSelectedBook(null);
+            }
+        } catch (error) {
+            console.error("Lỗi kết nối server khi từ chối:", error);
+        }
     };
 
     return (
         <div className="animate-fade-in space-y-12">
-            {/* Statistics Section - Square Cards */}
+            {/* Statistics Section */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <AdminStatCard
                     icon={<Users className="w-16 h-16" />}
                     label="Người dùng hệ thống"
-                    value="1,250"
+                    value={userCount}
                 />
                 <AdminStatCard
                     icon={<BookOpen className="w-16 h-16" />}
@@ -108,7 +130,7 @@ export default function AdminDashboard() {
                 <AdminStatCard
                     icon={<FileText className="w-16 h-16" />}
                     label="Sách chờ duyệt"
-                    value="5"
+                    value={pendingBooks.length}
                     highlight={true}
                 />
             </div>
@@ -117,10 +139,10 @@ export default function AdminDashboard() {
             <section className="space-y-6">
                 <h2 className="text-3xl font-bold text-foreground">Duyệt sách đóng góp</h2>
                 <div className="space-y-4">
-                    {PENDING_BOOKS.map((book) => (
+                    {pendingBooks.map((book) => (
                         <ModerationCard
                             key={book.id}
-                            book={book}
+                            book={book} // Truyền vào component con vẫn ok vì nó chỉ lấy những trường nó cần
                             onView={handleViewBook}
                             onApprove={handleApprove}
                             onReject={handleReject}
@@ -128,7 +150,7 @@ export default function AdminDashboard() {
                     ))}
                 </div>
 
-                {PENDING_BOOKS.length === 0 && (
+                {pendingBooks.length === 0 && (
                     <div className="text-center py-12">
                         <p className="text-muted-foreground text-lg">
                             Không có sách nào cần duyệt 🎉
@@ -152,9 +174,8 @@ export default function AdminDashboard() {
                 onReject={handleReject}
                 bookDetails={
                     selectedBook ? {
-                        description: "Đây là mô tả sách mẫu. Sách này kể về những cuộc phiêu lưu thú vị.",
-                        fullText:
-                            "Nội dung đầy đủ của sách sẽ được hiển thị ở đây. Đây là văn bản mẫu để minh họa cách hiển thị nội dung sách trong modal kiểm duyệt.",
+                        description: selectedBook.description || "",
+                        fullText: selectedBook.fullText || "", // Lấy từ object mở rộng
                     } : undefined
                 }
             />

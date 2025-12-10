@@ -169,6 +169,15 @@ export default function App() {
                   }
                 />
 
+                <Route
+                  path="/manage-profiles"
+                  element={
+                    <Layout>
+                      <ManageProfiles />
+                    </Layout>
+                  }
+                />
+
                 {/* Catch-all cuối cùng */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
