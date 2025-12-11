@@ -21,6 +21,7 @@ interface CarouselRowProps {
   onBookClick?: (bookId: string) => void;
   isFixedWidth?: boolean;
   categoryId?: string;
+  onDeleteBook?: (bookId: string) => void;
 }
 
 export function CarouselRow({
@@ -33,6 +34,7 @@ export function CarouselRow({
   onBookClick,
   isFixedWidth = false,
   categoryId,
+  onDeleteBook,
 }: CarouselRowProps) {
   // Gộp sách pending vào đầu danh sách
   const displayBooks = isFixedWidth ? books.slice(0, 5) : books;
@@ -91,6 +93,7 @@ export function CarouselRow({
                     onBookClick(realId);
                   }
                 }}
+                onDelete={onDeleteBook}
               />
               {/* Hiển thị nhãn "Đang duyệt" bên dưới nếu cần */}
               {book.status === "pending" && (

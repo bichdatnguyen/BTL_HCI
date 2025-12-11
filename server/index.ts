@@ -1,13 +1,27 @@
+if (typeof global.DOMMatrix === 'undefined') {
+  (global as any).DOMMatrix = class DOMMatrix {
+    a = 1; b = 0; c = 0; d = 1; e = 0; f = 0; // Ma trận đơn vị mặc định
+    constructor() { }
+    // Các phương thức giả lập nếu cần thiết để tránh crash
+    multiply() { return this; }
+    translate() { return this; }
+    scale() { return this; }
+  };
+}
+
 import "dotenv/config"; // Nạp biến môi trường từ file .env đầu tiên
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import multer from 'multer';
+
+const pdfParseLib = require('pdf-parse');
 
 // Khởi tạo app
 const app = express();
 const PORT = process.env.PORT || 5000; // Lấy PORT từ .env hoặc mặc định là 5000
-
+const upload = multer({ storage: multer.memoryStorage() });
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -60,7 +74,8 @@ const PersonalBookSchema = new mongoose.Schema({
   author: { type: String, default: "Đóng góp" }, // Tên tác giả sách
   uploadedBy: { type: String }, // Tên đăng nhập người upload (để Admin biết ai gửi)
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' }, // Mặc định là chờ duyệt
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  content: { type: String }
 });
 
 const PersonalBookModel = mongoose.model("personal_books", PersonalBookSchema);
@@ -186,10 +201,22 @@ app.post("/login", async (req, res) => {
 // 2. API QUẢN LÝ SÁCH HỆ THỐNG
 // ==========================================
 
-// A. API Lấy danh sách sách (Có bộ lọc tìm kiếm)
-// Cách dùng: 
-// - Lấy hết: GET /api/books
-// - Lọc: GET /api/books?category=Truyện Cổ Tích&level=Dễ
+
+// B. API Xem chi tiết 1 cuốn sách (Để vào màn hình đọc)
+// // Cách dùng: GET /api/books/654abc... (ID của sách)
+// app.get('/api/books/:id', async (req, res) => {
+//   try {
+//     const book = await BookModel.findById(req.params.id);
+//     if (!book) return res.status(404).json({ message: "Không tìm thấy sách" });
+//     res.json(book);
+//   } catch (err) {
+//     res.status(500).json({ message: "Lỗi: " + err.message });
+//   }
+// });
+
+// C. API Thêm sách mới vào kho (Dành cho Admin/Giáo viên nhập liệu)
+// Cách dùng: POST /api/books (Gửi JSON body)
+
 app.get('/api/books', async (req, res) => {
   try {
     const { category, level, search } = req.query;
@@ -210,20 +237,6 @@ app.get('/api/books', async (req, res) => {
   }
 });
 
-// B. API Xem chi tiết 1 cuốn sách (Để vào màn hình đọc)
-// Cách dùng: GET /api/books/654abc... (ID của sách)
-app.get('/api/books/:id', async (req, res) => {
-  try {
-    const book = await BookModel.findById(req.params.id);
-    if (!book) return res.status(404).json({ message: "Không tìm thấy sách" });
-    res.json(book);
-  } catch (err) {
-    res.status(500).json({ message: "Lỗi: " + err.message });
-  }
-});
-
-// C. API Thêm sách mới vào kho (Dành cho Admin/Giáo viên nhập liệu)
-// Cách dùng: POST /api/books (Gửi JSON body)
 app.post('/api/books', async (req, res) => {
   try {
     // Chỉ lấy các trường cần thiết để bảo mật
@@ -240,24 +253,108 @@ app.post('/api/books', async (req, res) => {
   }
 });
 
-app.post("/api/my-books", async (req, res) => {
-  try {
-    // Nhận thêm uploadedBy từ frontend gửi lên
-    const { title, coverUrl, fileUrl, userId, uploadedBy } = req.body;
+// GET /api/my-books
+// API Xem chi tiết sách (Sửa để tìm cả sách hệ thống VÀ sách cá nhân)
+// index.ts
 
+// API Lấy danh sách sách cá nhân của User (Đã sửa)
+app.get('/api/my-books', async (req, res) => {
+  try {
+    const { userId } = req.query; // Lấy userId từ frontend gửi lên
+
+    if (!userId) {
+      return res.status(400).json({ message: "Thiếu userId" });
+    }
+
+    // Tìm sách trong collection PersonalBookModel có userId trùng khớp
+    const books = await PersonalBookModel.find({ userId: userId }).sort({ createdAt: -1 });
+
+    res.json(books);
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi tải sách cá nhân: " + err.message });
+  }
+});
+
+// SỬA LẠI API UPLOAD TRONG FILE index.ts
+app.post("/api/my-books", upload.single('file'), async (req: any, res) => {
+  try {
+    // 1. Kiểm tra file
+    if (!req.file) {
+      return res.status(400).json({ message: "Vui lòng chọn file sách!" });
+    }
+
+    const { title, userId, uploadedBy } = req.body;
+    let extractedContent = "";
+
+    // 2. XỬ LÝ NỘI DUNG
+    if (req.file.mimetype === 'application/pdf') {
+
+      // --- ĐOẠN CODE DEBUG (THÊM VÀO ĐỂ SOI LỖI) ---
+      console.log("------------------------------------------------");
+      console.log("🔍 DEBUG pdf-parse:");
+      console.log("1. Type:", typeof pdfParseLib);
+      console.log("2. Keys:", Object.keys(pdfParseLib)); // Xem nó có chứa những hàm nào
+      console.log("3. Content:", pdfParseLib);          // In nội dung ra xem
+      console.log("------------------------------------------------");
+
+      // Thử tìm hàm đúng một cách thông minh
+      // Ưu tiên 1: .default (nếu import ES6)
+      // Ưu tiên 2: .PDFParse (nếu là named export)
+      // Ưu tiên 3: Chính nó (nếu là function)
+      let pdfParse = pdfParseLib.default || pdfParseLib.PDFParse || pdfParseLib;
+
+      if (typeof pdfParse !== 'function') {
+        throw new Error(`Vẫn không tìm thấy hàm! Type hiện tại là: ${typeof pdfParse}`);
+      }
+
+      const data = await pdfParse(req.file.buffer);
+      extractedContent = data.text;
+      // ---------------------------------------------
+
+    } else {
+      // Nếu là .txt
+      extractedContent = req.file.buffer.toString('utf-8');
+    }
+
+    // Kiểm tra nội dung rỗng
+    if (!extractedContent || !extractedContent.trim()) {
+      extractedContent = "Không đọc được nội dung (File ảnh hoặc PDF scan).";
+    }
+
+    // 3. Lưu vào Database
     const newBook = new PersonalBookModel({
       title,
-      coverUrl,
-      fileUrl,
+      coverUrl: "",
+      fileUrl: "",
       userId,
-      uploadedBy: uploadedBy || "Ẩn danh", // Lưu tên người upload
-      status: "pending" // Luôn luôn là pending khi mới up
+      uploadedBy: uploadedBy || "Ẩn danh",
+      content: extractedContent,
+      status: "pending"
     });
 
     await newBook.save();
-    res.status(201).json({ message: "Đã gửi sách chờ duyệt", book: newBook });
+    res.status(201).json({ message: "Upload thành công!", book: newBook });
+
   } catch (err) {
-    res.status(500).json({ message: "Lỗi: " + err.message });
+    console.error("❌ Lỗi chi tiết:", err); // Dòng này sẽ giúp bạn nhìn thấy lỗi rõ hơn
+    res.status(500).json({ message: "Lỗi Server: " + err.message });
+  }
+});
+
+// API Xóa sách cá nhân
+app.delete("/api/my-books/:id", async (req, res) => {
+  try {
+    const bookId = req.params.id;
+    // Tìm và xóa sách theo ID
+    const deletedBook = await PersonalBookModel.findByIdAndDelete(bookId);
+
+    if (!deletedBook) {
+      return res.status(404).json({ message: "Không tìm thấy sách để xóa" });
+    }
+
+    res.json({ message: "Đã xóa sách thành công" });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi server: " + err.message });
   }
 });
 
@@ -265,16 +362,18 @@ app.post("/api/my-books", async (req, res) => {
 // Frontend gọi: POST /api/my-books
 app.post("/api/my-books", async (req, res) => {
   try {
-    const { title, coverUrl, fileUrl, userId } = req.body;
+    // Nhận thêm content
+    const { title, coverUrl, fileUrl, userId, uploadedBy, content } = req.body;
 
-    // Tạo cuốn sách mới
     const newBook = new PersonalBookModel({
       title,
-      coverUrl: coverUrl || "https://example.com/default-cover.png", // Ảnh mặc định nếu ko có
+      coverUrl,
       fileUrl,
-      userId // Gắn nhãn: Sách này là của userId này
+      userId,
+      uploadedBy: uploadedBy || "Ẩn danh",
+      content: content || "Chưa có nội dung.", // <--- Lưu nội dung vào DB
+      status: "pending"
     });
-
     await newBook.save();
     res.status(201).json({ message: "Thêm sách thành công", book: newBook });
 
@@ -468,19 +567,30 @@ Vịt con ngoan ngoãn gật đầu và đi thay quần áo ngay lập tức.`
 
 // index.ts
 // API xem chi tiết 1 cuốn sách
+// API Lấy chi tiết 1 cuốn sách (Sửa để tìm cả 2 nơi)
 app.get('/api/books/:id', async (req, res) => {
   try {
-    const book = await BookModel.findById(req.params.id);
-    if (!book) return res.status(404).json({ message: "Không tìm thấy sách" });
+    // 1. Tìm trong Sách Hệ Thống trước
+    let book = await BookModel.findById(req.params.id);
+
+    // 2. Nếu không thấy, tìm tiếp trong Sách Cá Nhân
+    if (!book) {
+      book = await PersonalBookModel.findById(req.params.id);
+    }
+
+    // 3. Nếu vẫn không thấy thì báo lỗi
+    if (!book) {
+      return res.status(404).json({ message: "Không tìm thấy sách trong hệ thống" });
+    }
+
     res.json(book);
   } catch (err) {
-    res.status(500).json({ message: "Lỗi ID sách không hợp lệ" });
+    res.status(500).json({ message: "Lỗi ID sách không hợp lệ: " + err.message });
   }
 });
-
-// ==========================================
-// API THỐNG KÊ (Dành cho Admin)
-// ==========================================
+// // ==========================================
+// // API THỐNG KÊ (Dành cho Admin)
+// // ==========================================
 
 app.get('/api/stats/users', async (req, res) => {
   try {
