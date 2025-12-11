@@ -158,10 +158,10 @@ export function LibraryPage() {
         <h2 className="text-3xl font-bold text-foreground mb-8">
           🌟 Khám phá Sách
         </h2>
-        <BookCategoryRow title="✨ Truyện Cổ Tích" category="Truyện Cổ Tích" icon="" />
-        <BookCategoryRow title="🗺️ Phiêu Lưu" category="Phiêu Lưu" icon="" />
-        <BookCategoryRow title="🔬 Khoa Học" category="Khoa học" icon="" />
-        <BookCategoryRow title="🪄 Kỳ Ảo" category="Kì ảo" icon="" />
+        <BookCategoryRow title="✨ Truyện Cổ Tích" category="Cổ tích" icon="" />
+        <BookCategoryRow title="🪄Truyền Thuyết" category="Truyền thuyết" icon="" />
+        {/* // <BookCategoryRow title="🔬 Khoa Học" category="Khoa học" icon="" /> */}
+        <BookCategoryRow title="🗺️ Truyện thiếu nhi" category="Truyện thiếu nhi" icon="" />
       </div>
     </div>
   );
