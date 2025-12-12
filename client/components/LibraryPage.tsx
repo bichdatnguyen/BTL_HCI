@@ -5,7 +5,7 @@ import { CarouselRow } from "@/components/CarouselRow";
 import { BookCategoryRow } from "@/components/BookCategoryRow";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-
+import { BookCard } from "./BookCard";
 interface Book {
   _id?: string;
   id: string;
@@ -22,11 +22,12 @@ export function LibraryPage() {
 
   const [personalBooks, setPersonalBooks] = useState<Book[]>([]);
   const [pendingBooks, setPendingBooks] = useState<Book[]>([]);
-
+  const [systemBooks, setSystemBooks] = useState<Book[]>([]);     // Sách hệ thống (MỚI)
+  const [filteredBooks, setFilteredBooks] = useState<Book[]>([])
   const userId = localStorage.getItem("userId");
   // Lấy thêm username để gửi cho Admin biết ai upload
   const username = localStorage.getItem("username_login") || "User";
-
+  const allBooks = [...personalBooks, ...systemBooks];
   // 1. Hàm gọi API Xóa
   const handleDeleteBook = async (bookId: string) => {
     if (!userId) return;
@@ -84,6 +85,37 @@ export function LibraryPage() {
     fetchPersonalBooks();
   }, [userId]);
 
+  useEffect(() => {
+    const fetchSystemBooks = async () => {
+      try {
+        // Gọi API lấy toàn bộ sách hệ thống (không lọc category)
+        const response = await fetch("http://localhost:5000/api/books");
+        const data = await response.json();
+        setSystemBooks(data);
+      } catch (error) {
+        console.error("Lỗi lấy sách hệ thống:", error);
+      }
+    };
+    fetchSystemBooks();
+  }, []);
+
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredBooks([]);
+    } else {
+      const query = searchQuery.toLowerCase().trim();
+      const results = allBooks.filter((book) =>
+        book.title.toLowerCase().includes(query) ||
+        (book.author && book.author.toLowerCase().includes(query))
+      );
+      setFilteredBooks(results);
+    }
+  }, [searchQuery]);
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+  };
+
   // 2. SỬA ĐOẠN NÀY: Hàm Upload Thật (Gọi API)
   const handleFileUpload = async (file: File) => {
     if (!userId) return;
@@ -139,30 +171,62 @@ export function LibraryPage() {
     navigate(`/read/${bookId}`);
   };
 
+  const isSearching = searchQuery.trim() !== "";
+
   return (
     <div className="animate-fade-in p-6 pb-20">
       <SearchBar placeholder="Tìm kiếm sách..." onSearch={setSearchQuery} />
+      {isSearching ? (
+        <div className="mb-4">
+          <h2 className="text-3xl font-bold text-foreground mb-10">
+            🔍 Kết quả tìm kiếm
+          </h2>
 
-      <CarouselRow
-        title="📖 Thư viện cá nhân"
-        books={personalBooks}
-        pendingBooks={pendingBooks}
-        showUploadCard={true}
-        onUploadClick={handleUploadClick}
-        onBookClick={handleBookClick}
-        onDeleteBook={handleDeleteBook}
-        isFixedWidth={false}
-      />
+          {filteredBooks.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5">
+              {filteredBooks.map((book) => (
+                <BookCard
+                  key={book.id}
+                  id={book.id}
+                  title={book.title}
+                  coverUrl={book.coverUrl}
+                  onClick={() => handleBookClick(book.id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-lg text-muted-foreground">
+                Không tìm thấy sách nào
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
 
-      <div className="mb-4">
-        <h2 className="text-3xl font-bold text-foreground mb-8">
-          🌟 Khám phá Sách
-        </h2>
-        <BookCategoryRow title="✨ Truyện Cổ Tích" category="Cổ tích" icon="" />
-        <BookCategoryRow title="🪄Truyền Thuyết" category="Truyền thuyết" icon="" />
-        {/* // <BookCategoryRow title="🔬 Khoa Học" category="Khoa học" icon="" /> */}
-        <BookCategoryRow title="🗺️ Truyện thiếu nhi" category="Truyện thiếu nhi" icon="" />
-      </div>
+          <CarouselRow
+            title="📖 Thư viện cá nhân"
+            books={personalBooks}
+            pendingBooks={pendingBooks}
+            showUploadCard={true}
+            onUploadClick={handleUploadClick}
+            onBookClick={handleBookClick}
+            onDeleteBook={handleDeleteBook}
+            isFixedWidth={false}
+          />
+
+          <div className="mb-4">
+            <h2 className="text-3xl font-bold text-foreground mb-8">
+              🌟 Khám phá Sách
+            </h2>
+            <BookCategoryRow title="✨ Truyện Cổ Tích" category="Cổ tích" icon="" />
+            <BookCategoryRow title="🪄Truyền Thuyết" category="Truyền thuyết" icon="" />
+            {/* // <BookCategoryRow title="🔬 Khoa Học" category="Khoa học" icon="" /> */}
+            <BookCategoryRow title="🗺️ Truyện thiếu nhi" category="Truyện thiếu nhi" icon="" />
+          </div>
+        </>
+      )}
     </div>
   );
 }
