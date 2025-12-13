@@ -17,8 +17,10 @@ export default function BookReader() {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
 
-  // Ref cho giọng đọc
+  // Ref cho giọng đọc và scroll
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const currentSentenceRef = useRef<HTMLSpanElement>(null);
   const synth = window.speechSynthesis;
 
   // --- 1. GỌI API LẤY NỘI DUNG SÁCH ---
@@ -27,19 +29,28 @@ export default function BookReader() {
       try {
         setIsLoading(true);
         // Gọi API với ID lấy từ URL
-        const response = await fetch(`http://localhost:5000/api/books/${bookId}`);
+        const response = await fetch(
+          `http://localhost:5000/api/books/${bookId}`,
+        );
+        if (!response.ok) throw new Error("Failed to fetch book");
+
         const data = await response.json();
 
         if (data) {
           setBookTitle(data.title || "Không có tên");
 
           // Lấy nội dung từ Database (Trường 'content' mà bạn vừa nạp)
-          const rawContent = data.content || "Nội dung cuốn sách này đang được cập nhật.";
+          const rawContent =
+            data.content || "Nội dung cuốn sách này đang được cập nhật.";
 
           // Tách đoạn văn dài thành từng câu để AI đọc
           // Logic: Tách dựa vào dấu chấm (.), chấm hỏi (?), chấm than (!)
-          const splitText = rawContent.match(/[^.?!]+[.?!]+["']?|[^.?!]+$/g) || [rawContent];
-          const cleanSentences = splitText.map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+          const splitText = rawContent.match(
+            /[^.?!]+[.?!]+["']?|[^.?!]+$/g,
+          ) || [rawContent];
+          const cleanSentences = splitText
+            .map((s: string) => s.trim())
+            .filter((s: string) => s.length > 0);
 
           setSentences(cleanSentences);
         }
@@ -56,7 +67,27 @@ export default function BookReader() {
     }
   }, [bookId]);
 
-  // --- 2. XỬ LÝ GIỌNG ĐỌC (AI) ---
+  // --- 2. AUTO-SCROLL KHI ĐỌC ĐẾN CÂU MỚI ---
+  useEffect(() => {
+    if (currentSentenceRef.current && scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const element = currentSentenceRef.current;
+
+      // Lấy vị trí của element so với container
+      const elementTop = element.offsetTop;
+      const containerHeight = container.clientHeight;
+
+      // Scroll sao cho câu đang đọc ở vị trí 1/3 từ trên
+      const scrollPosition = Math.max(0, elementTop - containerHeight / 3);
+
+      container.scrollTo({
+        top: scrollPosition,
+        behavior: "smooth",
+      });
+    }
+  }, [currentSentenceIndex]);
+
+  // --- 3. XỬ LÝ GIỌNG ĐỌC (AI) ---
   useEffect(() => {
     if (sentences.length === 0) return;
 
@@ -73,7 +104,7 @@ export default function BookReader() {
     // Khi đọc xong 1 câu -> Tự chuyển sang câu tiếp theo
     utterance.onend = () => {
       if (currentSentenceIndex < sentences.length - 1 && isPlaying) {
-        setCurrentSentenceIndex(prev => prev + 1);
+        setCurrentSentenceIndex((prev) => prev + 1);
       } else {
         setIsPlaying(false); // Hết bài thì dừng
       }
@@ -104,13 +135,15 @@ export default function BookReader() {
 
   const changeSpeed = () => {
     if (playbackRate === 1) setPlaybackRate(1.5);
-    else if (playbackRate === 1.5) setPlaybackRate(0.75); // Đọc chậm
+    else if (playbackRate === 1.5)
+      setPlaybackRate(0.75); // Đọc chậm
     else setPlaybackRate(1);
   };
 
-  const progressPercentage = sentences.length > 0
-    ? ((currentSentenceIndex + 1) / sentences.length) * 100
-    : 0;
+  const progressPercentage =
+    sentences.length > 0
+      ? ((currentSentenceIndex + 1) / sentences.length) * 100
+      : 0;
 
   return (
     <div className="min-h-screen bg-[#FDFCF6] flex flex-col">
@@ -129,41 +162,50 @@ export default function BookReader() {
       </div>
 
       {/* NỘI DUNG SÁCH */}
-      <div className="flex-1 px-4 md:px-8 py-8 max-w-3xl mx-auto w-full pb-44">
-        <div className="bg-white rounded-[32px] p-6 md:p-10 shadow-sm border border-gray-100 min-h-[60vh]">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2 mt-20">
-              <div className="animate-spin text-2xl">⏳</div>
-              <p>Đang tải nội dung...</p>
-            </div>
-          ) : (
-            <div className="text-lg md:text-2xl leading-loose text-gray-700 font-medium space-y-2 text-justify">
-              {sentences.map((sentence, index) => (
-                <span
-                  key={index}
-                  onClick={() => {
-                    setCurrentSentenceIndex(index);
-                    setIsPlaying(true);
-                  }}
-                  className={`
-                    transition-all duration-300 rounded px-1 py-0.5 cursor-pointer hover:bg-gray-50
-                    ${index === currentSentenceIndex
-                      ? "bg-[#FFF9C4] text-gray-900 shadow-sm decoration-2 underline-offset-4"
-                      : ""}
-                  `}
-                >
-                  {sentence}{" "}
-                </span>
-              ))}
-            </div>
-          )}
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto scroll-smooth px-4 md:px-8 py-8 pb-44"
+      >
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-white rounded-[32px] p-6 md:p-10 shadow-sm border border-gray-100 min-h-[60vh]">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-2 mt-20">
+                <div className="animate-spin text-2xl">⏳</div>
+                <p>Đang tải nội dung...</p>
+              </div>
+            ) : (
+              <div className="text-lg md:text-2xl leading-loose text-gray-700 font-medium text-justify">
+                {sentences.map((sentence, index) => (
+                  <span
+                    key={index}
+                    ref={
+                      index === currentSentenceIndex ? currentSentenceRef : null
+                    }
+                    onClick={() => {
+                      setCurrentSentenceIndex(index);
+                      setIsPlaying(true);
+                    }}
+                    className={`
+                      transition-all duration-300 rounded px-1 py-0.5 cursor-pointer hover:bg-gray-50
+                      ${
+                        index === currentSentenceIndex
+                          ? "bg-[#FFF9C4] text-gray-900 shadow-sm decoration-2 underline-offset-4"
+                          : ""
+                      }
+                    `}
+                  >
+                    {sentence}{" "}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* THANH ĐIỀU KHIỂN (PLAYER) */}
       <div className="fixed bottom-0 left-0 w-full bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-6 py-6 rounded-t-[32px] border-t border-gray-100">
         <div className="max-w-3xl mx-auto relative">
-
           {/* Thanh tiến trình */}
           <div className="relative w-full h-2 bg-gray-100 rounded-full mb-8 overflow-hidden">
             <div
@@ -181,7 +223,10 @@ export default function BookReader() {
             {/* Cụm nút trung tâm */}
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-6 md:gap-8">
               {/* Nút Tốc độ */}
-              <button onClick={changeSpeed} className="w-10 h-10 rounded-full bg-gray-50 text-gray-600 font-bold text-xs hover:bg-gray-100 transition-colors">
+              <button
+                onClick={changeSpeed}
+                className="w-10 h-10 rounded-full bg-gray-50 text-gray-600 font-bold text-xs hover:bg-gray-100 transition-colors"
+              >
                 {playbackRate}x
               </button>
 
@@ -198,8 +243,15 @@ export default function BookReader() {
               </button>
 
               {/* Nút Âm lượng */}
-              <button onClick={() => setIsMuted(!isMuted)} className="w-10 h-10 rounded-full bg-gray-50 text-gray-600 flex items-center justify-center hover:bg-gray-100 transition-colors">
-                {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              <button
+                onClick={() => setIsMuted(!isMuted)}
+                className="w-10 h-10 rounded-full bg-gray-50 text-gray-600 flex items-center justify-center hover:bg-gray-100 transition-colors"
+              >
+                {isMuted ? (
+                  <VolumeX className="w-5 h-5" />
+                ) : (
+                  <Volume2 className="w-5 h-5" />
+                )}
               </button>
             </div>
 
