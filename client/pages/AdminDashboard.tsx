@@ -16,7 +16,7 @@ const RECENT_ACTIVITIES: Activity[] = [
     // ... các activity mẫu khác giữ nguyên
 ];
 
-// 👉 SỬA LỖI Ở ĐÂY: Tạo một interface mới kế thừa PendingBook và thêm các trường còn thiếu
+
 interface ExtendedPendingBook extends PendingBook {
     fullText?: string;
     description?: string;

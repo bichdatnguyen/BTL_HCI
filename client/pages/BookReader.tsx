@@ -28,16 +28,24 @@ export default function BookReader() {
         setIsLoading(true);
         // Gọi API với ID lấy từ URL
         const response = await fetch(`http://localhost:5000/api/books/${bookId}`);
+        if (!response.ok) {
+          throw new Error("Không tìm thấy sách");
+        }
         const data = await response.json();
 
         if (data) {
           setBookTitle(data.title || "Không có tên");
 
-          // Lấy nội dung từ Database (Trường 'content' mà bạn vừa nạp)
-          const rawContent = data.content || "Nội dung cuốn sách này đang được cập nhật.";
+          // Lấy nội dung thô
+          let rawContent = data.content || "Nội dung cuốn sách này đang được cập nhật.";
 
-          // Tách đoạn văn dài thành từng câu để AI đọc
-          // Logic: Tách dựa vào dấu chấm (.), chấm hỏi (?), chấm than (!)
+          // --- 🛠️ BỔ SUNG: LÀM SẠCH VĂN BẢN PDF ---
+          // File PDF thường bị ngắt dòng lung tung. 
+          // Lệnh này sẽ thay thế dấu xuống dòng (\n) bằng dấu cách.
+          rawContent = rawContent.replace(/\n/g, " ").replace(/\s+/g, " ");
+          // ----------------------------------------
+
+          // Logic tách câu cũ của bạn vẫn giữ nguyên
           const splitText = rawContent.match(/[^.?!]+[.?!]+["']?|[^.?!]+$/g) || [rawContent];
           const cleanSentences = splitText.map((s: string) => s.trim()).filter((s: string) => s.length > 0);
 
