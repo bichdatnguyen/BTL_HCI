@@ -54,7 +54,8 @@ const UserSchema = new mongoose.Schema({
   role: { type: String, default: "user" },
   name: { type: String, default: "" },          // Tên hiển thị (Tên của tớ)
   avatar: { type: String, default: "🐶" },      // Avatar mặc định là Chó
-  birthday: { type: String, default: "" }       // Ngày sinh
+  birthday: { type: String, default: "" },       // Ngày sinh
+  favorites: [{ type: String }]
 });
 const UserModel = mongoose.model("users", UserSchema);
 
@@ -469,6 +470,68 @@ app.delete("/api/admin/reject/:bookId", async (req, res) => {
   try {
     await PersonalBookModel.findByIdAndDelete(req.params.bookId);
     res.json({ message: "Đã từ chối và xóa sách." });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi: " + err.message });
+  }
+});
+
+// --- API YÊU THÍCH (FAVORITES) ---
+
+// API Lấy danh sách sách yêu thích của User (TRẢ VỀ FULL THÔNG TIN)
+app.get('/api/users/:userId/favorites', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // 1. Tìm user để lấy danh sách ID các sách đã thích
+    const user = await UserModel.findById(userId);
+    if (!user) return res.status(404).json({ message: "User không tồn tại" });
+
+    const favoriteIds = user.favorites || [];
+
+    // 2. Tìm thông tin chi tiết của các cuốn sách dựa trên danh sách ID đó
+    // Lưu ý: Chúng ta tìm ở cả bảng Sách hệ thống (BookModel) và Sách cá nhân (PersonalBookModel)
+    // để đảm bảo sách nào cũng hiện được.
+
+    const [systemBooks, personalBooks] = await Promise.all([
+      BookModel.find({ _id: { $in: favoriteIds } }),       // Tìm trong kho sách hệ thống
+      PersonalBookModel.find({ _id: { $in: favoriteIds } }) // Tìm trong kho sách cá nhân
+    ]);
+
+    // 3. Gộp kết quả lại và trả về
+    const allFavoriteBooks = [...systemBooks, ...personalBooks];
+
+    res.json(allFavoriteBooks);
+
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi server: " + err.message });
+  }
+});
+
+// API Thả tim / Bỏ tim
+app.post('/api/users/favorites', async (req, res) => {
+  try {
+    const { userId, bookId } = req.body;
+    const user = await UserModel.findById(userId);
+
+    if (!user) return res.status(404).json({ message: "User không tồn tại" });
+
+    // Kiểm tra xem đã thích chưa
+    if (!user.favorites) user.favorites = [];
+    const index = user.favorites.indexOf(bookId);
+
+    let isFavorite = false;
+    if (index === -1) {
+      // Chưa thích -> Thêm vào
+      user.favorites.push(bookId);
+      isFavorite = true;
+    } else {
+      // Đã thích -> Xóa đi
+      user.favorites.splice(index, 1);
+      isFavorite = false;
+    }
+
+    await user.save();
+    res.json({ success: true, isFavorite });
   } catch (err) {
     res.status(500).json({ message: "Lỗi: " + err.message });
   }

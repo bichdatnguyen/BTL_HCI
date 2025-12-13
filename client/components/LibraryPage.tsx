@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { BookCard } from "./BookCard";
 interface Book {
-  _id?: string;
+  _id: string;
   id: string;
   title: string;
   coverUrl: string;
@@ -186,11 +186,11 @@ export function LibraryPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5">
               {filteredBooks.map((book) => (
                 <BookCard
-                  key={book.id}
-                  id={book.id}
+                  key={book._id || book.id}
+                  id={book._id || book.id}
                   title={book.title}
                   coverUrl={book.coverUrl}
-                  onClick={() => handleBookClick(book.id)}
+                  onClick={() => handleBookClick(book._id || book.id || "")}
                 />
               ))}
             </div>
