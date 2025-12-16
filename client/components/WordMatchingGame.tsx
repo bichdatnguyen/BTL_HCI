@@ -124,6 +124,7 @@ interface GameState {
   selectedWord: string | null;
   feedback: "correct" | "incorrect" | null;
   score: number;
+  shuffledOptions: string[];
 }
 
 export function WordMatchingGame() {
@@ -141,6 +142,7 @@ export function WordMatchingGame() {
     selectedWord: null,
     feedback: null,
     score: 0,
+    shuffledOptions: [],
   });
 
   const [draggedCard, setDraggedCard] = useState<string | null>(null);
@@ -149,6 +151,16 @@ export function WordMatchingGame() {
   const randomizeRounds = () => {
     const random = [...ALL_GAMES].sort(() => Math.random() - 0.5).slice(0, 5);
     setSelectedRounds(random);
+    if (random.length > 0) {
+      const shuffled = [...random[0].options].sort(() => Math.random() - 0.5);
+      setGameState({
+        currentRound: 0,
+        selectedWord: null,
+        feedback: null,
+        score: 0,
+        shuffledOptions: shuffled,
+      });
+    }
   };
 
   // Random khi load trang
@@ -157,21 +169,38 @@ export function WordMatchingGame() {
   }, []);
 
   const currentGame = selectedRounds[gameState.currentRound] ?? ALL_GAMES[0];
-  const shuffledOptions = [...currentGame.options].sort(
-    () => Math.random() - 0.5,
-  );
+
+  // Cập nhật shuffledOptions khi chuyển sang round mới
+  useEffect(() => {
+    if (selectedRounds.length > 0) {
+      const shuffled = [...currentGame.options].sort(() => Math.random() - 0.5);
+      setGameState((prev) => ({
+        ...prev,
+        shuffledOptions: shuffled,
+      }));
+    }
+  }, [gameState.currentRound, selectedRounds]);
 
   const handleDragStart = (word: string) => setDraggedCard(word);
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    e.currentTarget.classList.add("ring-2", "ring-primary", "bg-secondary");
+    e.dataTransfer.dropEffect = "copy";
+    const target = e.currentTarget as HTMLElement;
+    target.classList.add("ring-2", "ring-primary", "bg-secondary");
   };
-  const handleDragLeave = (e: React.DragEvent) =>
-    e.currentTarget.classList.remove("ring-2", "ring-primary", "bg-secondary");
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    const target = e.currentTarget as HTMLElement;
+    if (e.clientX === 0 && e.clientY === 0) {
+      target.classList.remove("ring-2", "ring-primary", "bg-secondary");
+    }
+  };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    e.currentTarget.classList.remove("ring-2", "ring-primary", "bg-secondary");
+    const target = e.currentTarget as HTMLElement;
+    target.classList.remove("ring-2", "ring-primary", "bg-secondary");
     if (draggedCard) {
       setGameState((prev) => ({
         ...prev,
@@ -208,12 +237,6 @@ export function WordMatchingGame() {
 
   const handleReset = () => {
     randomizeRounds();
-    setGameState({
-      currentRound: 0,
-      selectedWord: null,
-      feedback: null,
-      score: 0,
-    });
   };
 
   const isGameComplete = gameState.feedback !== null;
@@ -302,7 +325,7 @@ export function WordMatchingGame() {
               </h3>
 
               <div className="space-y-4">
-                {shuffledOptions.map((word, index) => (
+                {gameState.shuffledOptions.map((word, index) => (
                   <div
                     key={`${word}-${index}`}
                     draggable
