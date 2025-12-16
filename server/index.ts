@@ -55,7 +55,12 @@ const UserSchema = new mongoose.Schema({
   name: { type: String, default: "" },          // Tên hiển thị (Tên của tớ)
   avatar: { type: String, default: "🐶" },      // Avatar mặc định là Chó
   birthday: { type: String, default: "" },       // Ngày sinh
-  favorites: [{ type: String }]
+  favorites: [{ type: String }],
+  dailyProgress: {
+    date: { type: String, default: "" }, // Lưu ngày hiện tại (ví dụ "2024-05-20")
+    readSeconds: { type: Number, default: 0 }, // Số giây đã đọc
+    gamesCount: { type: Number, default: 0 }   // Số game đã thắng
+  }
 });
 const UserModel = mongoose.model("users", UserSchema);
 
@@ -534,6 +539,74 @@ app.post('/api/users/favorites', async (req, res) => {
     res.json({ success: true, isFavorite });
   } catch (err) {
     res.status(500).json({ message: "Lỗi: " + err.message });
+  }
+});
+
+// API Cập nhật tiến độ (Đọc hoặc Chơi game)
+app.post("/api/users/progress", async (req, res) => {
+  try {
+    const { userId, type, value } = req.body; // type: 'read' hoặc 'game'
+    const user = await UserModel.findById(userId);
+
+    // Kiểm tra ngày mới để reset
+    const todayStr = new Date().toISOString().split('T')[0]; // "2024-05-20"
+
+    if (user.dailyProgress.date !== todayStr) {
+      // Sang ngày mới -> Reset về 0
+      user.dailyProgress = { date: todayStr, readSeconds: 0, gamesCount: 0 };
+    }
+
+    // Cộng dồn tiến độ
+    if (type === 'read') {
+      user.dailyProgress.readSeconds += value; // value là số giây vừa đọc thêm
+    } else if (type === 'game') {
+      user.dailyProgress.gamesCount += 1; // Cộng thêm 1 game
+    }
+
+    await user.save();
+    res.json({ message: "Đã cập nhật tiến độ", progress: user.dailyProgress });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi: " + err.message });
+  }
+});
+
+// API Lấy tiến độ hiện tại (Để vẽ biểu đồ Dashboard)
+app.get("/api/users/progress/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // 1. Tìm user
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User không tồn tại" });
+    }
+
+    // 2. Lấy ngày hiện tại (theo chuẩn YYYY-MM-DD)
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // 3. Xử lý Logic hiển thị:
+    // Nếu trong Database đang lưu tiến độ của ngày hôm qua (hoặc ngày cũ hơn),
+    // thì khi hiển thị lên màn hình, ta phải trả về 0 hết.
+    let displayProgress = user.dailyProgress;
+
+    // Kiểm tra nếu dữ liệu cũ quá hạn
+    if (!displayProgress || displayProgress.date !== todayStr) {
+      displayProgress = {
+        readSeconds: 0,
+        gamesCount: 0,
+        date: todayStr
+      };
+
+      // (Tùy chọn) Lưu lại trạng thái reset này vào DB luôn cho đồng bộ
+      // user.dailyProgress = displayProgress;
+      // await user.save();
+    }
+
+    // 4. Trả về dữ liệu
+    res.json(displayProgress);
+
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi server: " + err.message });
   }
 });
 
