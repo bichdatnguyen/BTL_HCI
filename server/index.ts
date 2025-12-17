@@ -101,6 +101,14 @@ const BookSchema = new mongoose.Schema({
   isPremium: { type: Boolean, default: false },  // Sách VIP mới đọc được (tính năng mở rộng sau này)
 });
 
+const ActivitySchema = new mongoose.Schema({
+  type: { type: String, enum: ['user', 'book', 'system', 'exercise'], required: true },
+  message: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now } // Lưu thời gian thực
+});
+
+const ActivityModel = mongoose.model("activities", ActivitySchema);
+
 // Lưu vào collection tên là 'system_books'
 const BookModel = mongoose.model("system_books", BookSchema);
 
@@ -119,6 +127,12 @@ app.post("/register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new UserModel({ username, password: hashedPassword });
     await newUser.save();
+
+    await new ActivityModel({
+      type: 'user',
+      message: `Tài khoản mới "${username}" vừa đăng ký thành công.`
+    }).save();
+
     res.status(201).json({ message: "Đăng ký thành công" });
   } catch (err) {
     res.status(500).json({ message: "Lỗi Server: " + err.message });
@@ -182,6 +196,11 @@ app.post("/login", async (req, res) => {
 
     // LƯU LẠI VÀO MONGODB (Bước quan trọng nhất)
     await user.save();
+
+    new ActivityModel({
+      type: 'user',
+      message: `Người dùng "${user.username}" vừa đăng nhập.`
+    }).save();
 
     // =========================================================
 
@@ -477,6 +496,41 @@ app.delete("/api/admin/reject/:bookId", async (req, res) => {
     res.json({ message: "Đã từ chối và xóa sách." });
   } catch (err) {
     res.status(500).json({ message: "Lỗi: " + err.message });
+  }
+});
+
+// index.ts
+
+// 4. API Lấy thống kê tổng hợp (Dashboard)
+// Trong file index.ts
+
+// 4. API Lấy thống kê tổng hợp (Dashboard)
+app.get("/api/admin/stats", async (req, res) => {
+  try {
+    const [userCount, systemBooksCount, pendingBooksCount, activities] = await Promise.all([
+      UserModel.countDocuments({}),
+      BookModel.countDocuments({}), // Chỉ đếm sách hệ thống
+      // PersonalBookModel.countDocuments({}), // <-- BỎ DÒNG NÀY (Không đếm tổng sách cá nhân nữa)
+      PersonalBookModel.countDocuments({ status: "pending" }),
+      ActivityModel.find().sort({ timestamp: -1 }).limit(10)
+    ]);
+
+    const formattedActivities = activities.map(act => ({
+      id: act._id,
+      type: act.type,
+      message: act.message,
+      timestamp: new Date(act.timestamp).toLocaleString('vi-VN', { hour12: false })
+    }));
+
+    res.json({
+      totalUsers: userCount,
+      totalBooks: systemBooksCount, // <--- SỬA Ở ĐÂY: Chỉ lấy systemBooksCount
+      pendingBooks: pendingBooksCount,
+      activities: formattedActivities
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi thống kê: " + err.message });
   }
 });
 
