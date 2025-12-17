@@ -22,7 +22,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import BookReader from "./pages/BookReader";
 import PronunciationPage from "./pages/Pronunciation";
 import AdminDashboard from "./pages/AdminDashboard";
-
+import InteractiveStory from "./pages/InteractiveStory";
 import ManageProfiles from "./pages/ManageProfiles";
 import NotFound from "./pages/NotFound";
 
@@ -47,7 +47,8 @@ function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       <Sidebar />
-      <div className="flex-1 ml-32 flex flex-col">
+
+      <div className="flex-1 ml-32 flex flex-col -screen overflow-y-scroll">
         {/* Module Header - Sticky */}
         {header && (
           <div className="sticky top-0 z-40 bg-background border-b border-border shadow-sm px-8 md:px-12 py-6">
@@ -62,7 +63,7 @@ function Layout({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Content Body - Scrollable */}
-        <main className="flex-1 overflow-y-auto px-8 md:px-12">
+        <main className="flex-1 px-8 md:px-12">
           <div className="pt-8 md:pt-12">{children}</div>
         </main>
       </div>
@@ -82,7 +83,14 @@ export default function App() {
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route
+                  path="/games/story"
+                  element={
+                    <Layout>
+                      <InteractiveStory />
+                    </Layout>
+                  }
+                />
 
                 <Route
                   path="/"

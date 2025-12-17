@@ -19,7 +19,7 @@ export function PageHeader({
 }: PageHeaderProps) {
 
   return (
-    <div className="flex items-start justify-between gap-8">
+    <div className="flex items-center justify-between gap-8">
       {/* Left: Title and Subtitle */}
       <div>
         <h1 className="text-4xl md:text-5xl font-bold text-foreground">

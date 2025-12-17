@@ -4,13 +4,15 @@ import { DashboardCard } from "@/components/DashboardCard";
 import { GAMES } from "@/data/games";
 
 export default function Games() {
+  const currentStreak = parseInt(localStorage.getItem("currentStreak") || "0");
   useSetPageHeader({
     title: "Luyện tập",
     subtitle: "Chọn một trò chơi để bắt đầu học!",
+    streakCount: currentStreak,
   });
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in p-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {GAMES.map((game) => (
           <Link
@@ -37,13 +39,12 @@ export default function Games() {
                 </p>
               ) : (
                 <div
-                  className={`mt-4 inline-block px-4 py-2 rounded-full text-sm font-semibold ${
-                    game.difficulty === "easy"
-                      ? "bg-success text-success-foreground"
-                      : game.difficulty === "medium"
-                        ? "bg-warning text-warning-foreground"
-                        : "bg-destructive text-destructive-foreground"
-                  }`}
+                  className={`mt-4 inline-block px-4 py-2 rounded-full text-sm font-semibold ${game.difficulty === "easy"
+                    ? "bg-success text-success-foreground"
+                    : game.difficulty === "medium"
+                      ? "bg-warning text-warning-foreground"
+                      : "bg-destructive text-destructive-foreground"
+                    }`}
                 >
                   {game.difficulty === "easy"
                     ? "Dễ"

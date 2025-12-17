@@ -7,7 +7,7 @@ interface ProgressItem {
   title: string;
   progress: number;
   color: "green" | "blue" | "purple";
-  displayValue?: string; // Thêm trường này để hiển thị chữ "1 ngày" thay vì "14%"
+  displayValue?: string;
 }
 
 const colorMap = {
@@ -17,52 +17,103 @@ const colorMap = {
 };
 
 export function ProgressSection() {
-  // 1. Chuyển progressItems thành State để có thể cập nhật động
   const [items, setItems] = useState<ProgressItem[]>([
     {
       id: "reading",
       title: "Đọc hôm nay",
-      progress: 65,
+      progress: 0,
       color: "green",
+      displayValue: "0 phút",
     },
     {
       id: "games",
       title: "Trò chơi hoàn thành",
-      progress: 42,
+      progress: 0,
       color: "blue",
+      displayValue: "0/3 game",
     },
     {
       id: "streak",
       title: "Chuỗi 7 ngày",
-      progress: 0, // Mặc định là 0, sẽ cập nhật ngay khi trang web tải xong
+      progress: 0,
       color: "purple",
       displayValue: "0 ngày",
     },
   ]);
 
-  // 2. Dùng useEffect để lấy dữ liệu Streak thật từ bộ nhớ
   useEffect(() => {
-    // Lấy số streak đang lưu trong máy
-    const savedStreak = localStorage.getItem("currentStreak");
-    const streakCount = savedStreak ? parseInt(savedStreak) : 0;
+    const fetchAllProgress = async () => {
+      const userId = localStorage.getItem("userId");
 
-    // Tính toán phần trăm cho thanh tiến độ (Mục tiêu là 7 ngày)
-    // Ví dụ: 1 ngày = 14%, 3 ngày = 42%, 7 ngày = 100%
-    const percentage = Math.min(Math.round((streakCount / 7) * 100), 100);
+      // 1. STREAK
+      const savedStreak = localStorage.getItem("currentStreak");
+      const streakCount = savedStreak ? parseInt(savedStreak) : 0;
+      // Kẹp giá trị trong khoảng 0-100%
+      const streakPercent = Math.min(Math.round((streakCount / 7) * 100), 100);
+      const streakDisplay = `${streakCount}/7 ngày`;
 
-    // Cập nhật lại danh sách items
-    setItems((prevItems) =>
-      prevItems.map((item) => {
-        if (item.id === "streak") {
-          return {
-            ...item,
-            progress: percentage, // Cập nhật độ dài thanh màu
-            displayValue: `${streakCount}/7 ngày`, // Cập nhật dòng chữ hiển thị
-          };
+      let readPercent = 0;
+      let readDisplay = "0 phút";
+      let gamePercent = 0;
+      let gameDisplay = "0/3 game";
+
+      // 2. API Đọc & Game
+      if (userId) {
+        try {
+          const res = await fetch(`http://localhost:5000/api/users/progress/${userId}`);
+          if (res.ok) {
+            const data = await res.json();
+
+            // --- XỬ LÝ ĐỌC SÁCH ---
+            const readGoal = 900; // 15 phút
+            // Dùng Math.min(..., 100) để không bao giờ vượt quá 100%
+            readPercent = Math.min(Math.round((data.readSeconds / readGoal) * 100), 100);
+
+            const currentMin = Math.floor(data.readSeconds / 60);
+            const goalMin = Math.floor(readGoal / 60);
+            readDisplay = `${currentMin}/${goalMin} phút`;
+
+            // --- XỬ LÝ GAME ---
+            const gameGoal = 3;
+            // 1. Tính phần trăm hiển thị (Max 100%)
+            gamePercent = Math.min(Math.round((data.gamesCount / gameGoal) * 100), 100);
+
+            // 2. 🔥 SỬA QUAN TRỌNG: Giới hạn số hiển thị (Max là gameGoal)
+            // Nếu data bị lỗi là 13, thì chỉ hiện 3/3 thôi
+            const displayCount = data.gamesCount > gameGoal ? gameGoal : data.gamesCount;
+            gameDisplay = `${displayCount}/${gameGoal} game`;
+          }
+        } catch (error) {
+          console.error("Lỗi lấy tiến độ:", error);
         }
-        return item;
-      })
-    );
+      }
+
+      setItems([
+        {
+          id: "reading",
+          title: "Đọc hôm nay",
+          progress: readPercent,
+          color: "green",
+          displayValue: readDisplay,
+        },
+        {
+          id: "games",
+          title: "Trò chơi hoàn thành",
+          progress: gamePercent,
+          color: "blue",
+          displayValue: gameDisplay,
+        },
+        {
+          id: "streak",
+          title: "Chuỗi 7 ngày",
+          progress: streakPercent,
+          color: "purple",
+          displayValue: streakDisplay,
+        },
+      ]);
+    };
+
+    fetchAllProgress();
   }, []);
 
   return (
@@ -77,22 +128,17 @@ export function ProgressSection() {
               )}
             </div>
 
-            {/* Progress bar */}
             <div className="w-full bg-muted rounded-full h-4 overflow-hidden mb-3">
               <div
-                className={`h-full ${colorMap[item.color]} transition-all duration-1000 ease-out`} // Thêm hiệu ứng chạy mượt
+                className={`h-full ${colorMap[item.color]} transition-all duration-1000 ease-out`}
                 style={{ width: `${item.progress}%` }}
                 role="progressbar"
-                aria-valuenow={item.progress}
-                aria-valuemin={0}
-                aria-valuemax={100}
                 aria-label={`${item.title}: ${item.progress}%`}
               />
             </div>
 
-            {/* Hiển thị số liệu: Ưu tiên displayValue nếu có */}
             <p className="text-base font-semibold text-foreground">
-              {item.displayValue ? item.displayValue : `${item.progress}%`}
+              {item.displayValue}
             </p>
           </DashboardCard>
         ))}

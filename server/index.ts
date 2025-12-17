@@ -64,10 +64,15 @@ const UserSchema = new mongoose.Schema({
   streak: { type: Number, default: 0 },
   lastLoginDate: { type: Date, default: null },
   role: { type: String, default: "user" },
-  name: { type: String, default: "" },
-  avatar: { type: String, default: "🐶" },
-  birthday: { type: String, default: "" },
+  name: { type: String, default: "" },          // Tên hiển thị (Tên của tớ)
+  avatar: { type: String, default: "🐶" },      // Avatar mặc định là Chó
+  birthday: { type: String, default: "" },       // Ngày sinh
   favorites: [{ type: String }],
+  dailyProgress: {
+    date: { type: String, default: "" }, // Lưu ngày hiện tại (ví dụ "2024-05-20")
+    readSeconds: { type: Number, default: 0 }, // Số giây đã đọc
+    gamesCount: { type: Number, default: 0 }   // Số game đã thắng
+  }
 });
 const UserModel = mongoose.model("users", UserSchema);
 
@@ -112,6 +117,14 @@ const BookSchema = new mongoose.Schema({
   isPremium: { type: Boolean, default: false }, // Sách VIP mới đọc được (tính năng mở rộng sau này)
 });
 
+const ActivitySchema = new mongoose.Schema({
+  type: { type: String, enum: ['user', 'book', 'system', 'exercise'], required: true },
+  message: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now } // Lưu thời gian thực
+});
+
+const ActivityModel = mongoose.model("activities", ActivitySchema);
+
 // Lưu vào collection tên là 'system_books'
 const BookModel = mongoose.model("system_books", BookSchema);
 
@@ -143,6 +156,12 @@ app.post("/register", async (req, res) => {
       email,
     });
     await newUser.save();
+
+    await new ActivityModel({
+      type: 'user',
+      message: `Tài khoản mới "${username}" vừa đăng ký thành công.`
+    }).save();
+
     res.status(201).json({ message: "Đăng ký thành công" });
   } catch (err) {
     res.status(500).json({ message: "Lỗi Server: " + err.message });
@@ -220,6 +239,11 @@ app.post("/login", async (req, res) => {
 
     // LƯU LẠI VÀO MONGODB (Bước quan trọng nhất)
     await user.save();
+
+    new ActivityModel({
+      type: 'user',
+      message: `Người dùng "${user.username}" vừa đăng nhập.`
+    }).save();
 
     // =========================================================
 
@@ -567,6 +591,41 @@ app.delete("/api/admin/reject/:bookId", async (req, res) => {
   }
 });
 
+// index.ts
+
+// 4. API Lấy thống kê tổng hợp (Dashboard)
+// Trong file index.ts
+
+// 4. API Lấy thống kê tổng hợp (Dashboard)
+app.get("/api/admin/stats", async (req, res) => {
+  try {
+    const [userCount, systemBooksCount, pendingBooksCount, activities] = await Promise.all([
+      UserModel.countDocuments({}),
+      BookModel.countDocuments({}), // Chỉ đếm sách hệ thống
+      // PersonalBookModel.countDocuments({}), // <-- BỎ DÒNG NÀY (Không đếm tổng sách cá nhân nữa)
+      PersonalBookModel.countDocuments({ status: "pending" }),
+      ActivityModel.find().sort({ timestamp: -1 }).limit(10)
+    ]);
+
+    const formattedActivities = activities.map(act => ({
+      id: act._id,
+      type: act.type,
+      message: act.message,
+      timestamp: new Date(act.timestamp).toLocaleString('vi-VN', { hour12: false })
+    }));
+
+    res.json({
+      totalUsers: userCount,
+      totalBooks: systemBooksCount, // <--- SỬA Ở ĐÂY: Chỉ lấy systemBooksCount
+      pendingBooks: pendingBooksCount,
+      activities: formattedActivities
+    });
+
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi thống kê: " + err.message });
+  }
+});
+
 // --- API YÊU THÍCH (FAVORITES) ---
 
 // API Lấy danh sách sách yêu thích của User (TRẢ VỀ FULL THÔNG TIN)
@@ -625,6 +684,74 @@ app.post("/api/users/favorites", async (req, res) => {
     res.json({ success: true, isFavorite });
   } catch (err) {
     res.status(500).json({ message: "Lỗi: " + err.message });
+  }
+});
+
+// API Cập nhật tiến độ (Đọc hoặc Chơi game)
+app.post("/api/users/progress", async (req, res) => {
+  try {
+    const { userId, type, value } = req.body; // type: 'read' hoặc 'game'
+    const user = await UserModel.findById(userId);
+
+    // Kiểm tra ngày mới để reset
+    const todayStr = new Date().toISOString().split('T')[0]; // "2024-05-20"
+
+    if (user.dailyProgress.date !== todayStr) {
+      // Sang ngày mới -> Reset về 0
+      user.dailyProgress = { date: todayStr, readSeconds: 0, gamesCount: 0 };
+    }
+
+    // Cộng dồn tiến độ
+    if (type === 'read') {
+      user.dailyProgress.readSeconds += value; // value là số giây vừa đọc thêm
+    } else if (type === 'game') {
+      user.dailyProgress.gamesCount += 1; // Cộng thêm 1 game
+    }
+
+    await user.save();
+    res.json({ message: "Đã cập nhật tiến độ", progress: user.dailyProgress });
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi: " + err.message });
+  }
+});
+
+// API Lấy tiến độ hiện tại (Để vẽ biểu đồ Dashboard)
+app.get("/api/users/progress/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // 1. Tìm user
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User không tồn tại" });
+    }
+
+    // 2. Lấy ngày hiện tại (theo chuẩn YYYY-MM-DD)
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // 3. Xử lý Logic hiển thị:
+    // Nếu trong Database đang lưu tiến độ của ngày hôm qua (hoặc ngày cũ hơn),
+    // thì khi hiển thị lên màn hình, ta phải trả về 0 hết.
+    let displayProgress = user.dailyProgress;
+
+    // Kiểm tra nếu dữ liệu cũ quá hạn
+    if (!displayProgress || displayProgress.date !== todayStr) {
+      displayProgress = {
+        readSeconds: 0,
+        gamesCount: 0,
+        date: todayStr
+      };
+
+      // (Tùy chọn) Lưu lại trạng thái reset này vào DB luôn cho đồng bộ
+      // user.dailyProgress = displayProgress;
+      // await user.save();
+    }
+
+    // 4. Trả về dữ liệu
+    res.json(displayProgress);
+
+  } catch (err) {
+    res.status(500).json({ message: "Lỗi server: " + err.message });
   }
 });
 
