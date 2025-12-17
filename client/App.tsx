@@ -21,7 +21,7 @@ import Register from "./pages/Register";
 import BookReader from "./pages/BookReader";
 import PronunciationPage from "./pages/Pronunciation";
 import AdminDashboard from "./pages/AdminDashboard";
-
+import InteractiveStory from "./pages/InteractiveStory";
 import ManageProfiles from "./pages/ManageProfiles";
 import NotFound from "./pages/NotFound";
 
@@ -81,7 +81,14 @@ export default function App() {
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-
+                <Route
+                  path="/games/story"
+                  element={
+                    <Layout>
+                      <InteractiveStory />
+                    </Layout>
+                  }
+                />
 
                 <Route
                   path="/"

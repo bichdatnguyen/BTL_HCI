@@ -33,8 +33,8 @@ export const GAMES: Game[] = [
     emoji: "📖",
     description: "Đọc và chọn câu chuyện",
     difficulty: "easy",
-    path: "#",
-    isComingSoon: true,
+    path: "/games/story",
+    isComingSoon: false,
   },
   {
     id: "word-search",

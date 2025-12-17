@@ -1,4 +1,6 @@
+// LibrarySection.tsx
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom"; // <--- 1. Thêm dòng này
 import { DashboardSection } from "./DashboardCard";
 import { BookCard } from "./BookCard";
 
@@ -13,12 +15,12 @@ export function LibrarySection() {
   const [favoriteBooks, setFavoriteBooks] = useState<Book[]>([]);
   const userId = localStorage.getItem("userId");
 
-  // Gọi API lấy sách yêu thích
+  const navigate = useNavigate(); // <--- 2. Khai báo hàm chuyển trang
+
   useEffect(() => {
     const fetchFavorites = async () => {
       if (!userId) return;
       try {
-        // Gọi endpoint mới dành cho sách yêu thích
         const response = await fetch(`http://localhost:5000/api/users/${userId}/favorites`);
 
         if (response.ok) {
@@ -42,8 +44,10 @@ export function LibrarySection() {
                 id={book._id}
                 title={book.title}
                 coverUrl={book.coverUrl}
-                isFavorite={true} // Luôn hiện trái tim đỏ
-                onClick={() => console.log(`Đọc sách: ${book._id}`)}
+                isFavorite={true}
+
+                // <--- 3. SỬA DÒNG NÀY: Chuyển hướng đến trang đọc sách
+                onClick={() => navigate(`/read/${book._id}`)}
               />
             </div>
           ))}
