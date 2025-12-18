@@ -25,7 +25,7 @@ import InteractiveStory from "./pages/InteractiveStory";
 import ManageProfiles from "./pages/ManageProfiles";
 import NotFound from "./pages/NotFound";
 
-// Component này đóng vai trò "Bảo vệ"
+// 1. Component Bảo vệ Admin: Chỉ cho phép role="admin" truy cập
 const AdminRoute = ({ children }: { children: JSX.Element }) => {
   const role = localStorage.getItem("role"); // Lấy quyền từ bộ nhớ
 
@@ -35,6 +35,18 @@ const AdminRoute = ({ children }: { children: JSX.Element }) => {
   }
 
   // Nếu đúng là admin, cho phép vào
+  return children;
+};
+
+// 2. Component Bảo vệ Người dùng: Bắt buộc phải đăng nhập mới được vào
+const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+  const userId = localStorage.getItem("userId");
+
+  if (!userId) {
+    // Nếu không tìm thấy userId (chưa đăng nhập), đá về trang Login ngay lập tức
+    return <Navigate to="/login" replace />;
+  }
+
   return children;
 };
 
@@ -80,92 +92,133 @@ export default function App() {
           <ProfileProvider>
             <HeaderProvider>
               <Routes>
+                {/* --- CÁC ROUTE CÔNG KHAI (KHÔNG CẦN ĐĂNG NHẬP) --- */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route
-                  path="/games/story"
-                  element={
-                    <Layout>
-                      <InteractiveStory />
-                    </Layout>
-                  }
-                />
 
+                {/* --- CÁC ROUTE CẦN BẢO VỆ (PHẢI ĐĂNG NHẬP) --- */}
+
+                {/* Trang chủ */}
                 <Route
                   path="/"
                   element={
-                    <Layout>
-                      <Index />
-                    </Layout>
+                    <ProtectedRoute>
+                      <Layout>
+                        <Index />
+                      </Layout>
+                    </ProtectedRoute>
                   }
                 />
 
+                {/* Truyện tương tác */}
+                <Route
+                  path="/games/story"
+                  element={
+                    <ProtectedRoute>
+                      <Layout>
+                        <InteractiveStory />
+                      </Layout>
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Danh sách Game */}
                 <Route
                   path="/games"
                   element={
-                    <Layout>
-                      <Games />
-                    </Layout>
+                    <ProtectedRoute>
+                      <Layout>
+                        <Games />
+                      </Layout>
+                    </ProtectedRoute>
                   }
                 />
 
+                {/* Game Nối từ */}
                 <Route
                   path="/games/matching"
                   element={
-                    <Layout>
-                      <WordMatching />
-                    </Layout>
+                    <ProtectedRoute>
+                      <Layout>
+                        <WordMatching />
+                      </Layout>
+                    </ProtectedRoute>
                   }
                 />
 
+                {/* Game Tìm từ */}
                 <Route
                   path="/games/word-search"
                   element={
-                    <Layout>
-                      <WordSearch />
-                    </Layout>
+                    <ProtectedRoute>
+                      <Layout>
+                        <WordSearch />
+                      </Layout>
+                    </ProtectedRoute>
                   }
                 />
 
-                {/* Đảm bảo route này nằm sau /games */}
+                {/* Game Phát âm - Đảm bảo route này nằm sau /games */}
                 <Route
                   path="/games/pronunciation"
                   element={
-                    <Layout>
-                      <PronunciationPage />
-                    </Layout>
+                    <ProtectedRoute>
+                      <Layout>
+                        <PronunciationPage />
+                      </Layout>
+                    </ProtectedRoute>
                   }
                 />
 
+                {/* Thư viện sách */}
                 <Route
                   path="/library"
                   element={
-                    <Layout>
-                      <Library />
-                    </Layout>
+                    <ProtectedRoute>
+                      <Layout>
+                        <Library />
+                      </Layout>
+                    </ProtectedRoute>
                   }
                 />
 
-                {/* Các route động - để xuống dưới cùng */}
+                {/* Xem chi tiết thể loại sách */}
                 <Route
                   path="/category/:categoryName"
                   element={
-                    <Layout>
-                      <CategoryView />
-                    </Layout>
+                    <ProtectedRoute>
+                      <Layout>
+                        <CategoryView />
+                      </Layout>
+                    </ProtectedRoute>
                   }
                 />
 
-                {/* BookReader cũng nên có Layout nếu bạn muốn sidebar */}
+                {/* Đọc sách */}
                 <Route
                   path="/read/:bookId"
                   element={
-                    <Layout>
-                      <BookReader />
-                    </Layout>
+                    <ProtectedRoute>
+                      <Layout>
+                        <BookReader />
+                      </Layout>
+                    </ProtectedRoute>
                   }
                 />
 
+                {/* Quản lý hồ sơ */}
+                <Route
+                  path="/manage-profiles"
+                  element={
+                    <ProtectedRoute>
+                      <Layout>
+                        <ManageProfiles />
+                      </Layout>
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* --- ROUTE ADMIN (BẢO VỆ BẰNG ROLE) --- */}
                 <Route
                   path="/admin"
                   element={
@@ -177,16 +230,7 @@ export default function App() {
                   }
                 />
 
-                <Route
-                  path="/manage-profiles"
-                  element={
-                    <Layout>
-                      <ManageProfiles />
-                    </Layout>
-                  }
-                />
-
-                {/* Catch-all cuối cùng */}
+                {/* Catch-all cuối cùng (Trang 404) */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </HeaderProvider>
