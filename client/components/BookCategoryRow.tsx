@@ -2,10 +2,10 @@ import { useEffect, useState, useRef } from "react";
 import { BookCard } from "./BookCard";
 import { Link, useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { toast } from "sonner"; // Nhớ cài thư viện sonner hoặc dùng alert thay thế
+import { toast } from "sonner";
 
 interface Book {
-  _id: string; // Lưu ý: Backend trả về _id
+  _id: string;
   title: string;
   coverUrl: string;
   author: string;
@@ -19,13 +19,12 @@ interface BookCategoryRowProps {
 
 export function BookCategoryRow({ title, category, icon }: BookCategoryRowProps) {
   const [books, setBooks] = useState<Book[]>([]);
-  const [favorites, setFavorites] = useState<string[]>([]); // Lưu danh sách ID sách đã thích
+  const [favorites, setFavorites] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const userId = localStorage.getItem("userId");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // 1. Tải sách và Danh sách yêu thích cùng lúc
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -39,13 +38,8 @@ export function BookCategoryRow({ title, category, icon }: BookCategoryRowProps)
 
         if (favRes && favRes.ok) {
           const favData = await favRes.json();
-
-          // ===> ĐOẠN QUAN TRỌNG CẦN SỬA Ở ĐÂY <===
-          // Vì API giờ trả về mảng Object (Full thông tin), 
-          // ta cần dùng .map() để lọc lấy riêng mảng ID ra thôi.
           const favIds = favData.map((book: any) => book._id);
-
-          setFavorites(favIds); // Lưu mảng ID: ["abc...", "xyz..."]
+          setFavorites(favIds);
         }
       } catch (error) {
         console.error("Lỗi tải dữ liệu:", error);
@@ -57,31 +51,26 @@ export function BookCategoryRow({ title, category, icon }: BookCategoryRowProps)
     fetchData();
   }, [category, userId]);
 
-  // 2. Hàm xử lý khi bấm vào trái tim
   const handleToggleFavorite = async (bookId: string) => {
     if (!userId) {
       toast.error("Bạn cần đăng nhập để lưu sách yêu thích!");
       return;
     }
-
-    // Cập nhật giao diện NGAY LẬP TỨC (Optimistic UI) để cảm giác nhanh hơn
     const isCurrentlyFav = favorites.includes(bookId);
     let newFavs;
     if (isCurrentlyFav) {
-      newFavs = favorites.filter(id => id !== bookId); // Bỏ tim
+      newFavs = favorites.filter(id => id !== bookId);
     } else {
-      newFavs = [...favorites, bookId]; // Thêm tim
+      newFavs = [...favorites, bookId];
     }
     setFavorites(newFavs);
 
-    // Gọi API để lưu xuống server
     try {
       await fetch("http://localhost:5000/api/users/favorites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, bookId }),
       });
-      // Nếu API lỗi thì có thể revert lại state ở đây nếu muốn chặt chẽ
     } catch (error) {
       console.error("Lỗi lưu tim:", error);
     }
@@ -121,7 +110,11 @@ export function BookCategoryRow({ title, category, icon }: BookCategoryRowProps)
           </button>
         )}
 
-        <div ref={scrollRef} className="flex overflow-x-auto gap-4 px-2 pb-6 scroll-smooth snap-x snap-mandatory scrollbar-thin">
+        {/* 🔴 THAY ĐỔI QUAN TRỌNG: 
+            Sử dụng 'overflow-x-scroll' thay vì 'overflow-x-auto'.
+            Điều này ÉP BUỘC thanh cuộn phải hiện ra, kể cả khi sách ít.
+        */}
+        <div ref={scrollRef} className="flex overflow-x-scroll gap-4 px-2 pb-6 scroll-smooth snap-x snap-mandatory scrollbar-force">
           {loading ? (
             [...Array(5)].map((_, i) => (
               <div key={i} className="w-[160px] flex-shrink-0 animate-pulse">
@@ -135,12 +128,8 @@ export function BookCategoryRow({ title, category, icon }: BookCategoryRowProps)
                   id={book._id}
                   title={book.title}
                   coverUrl={book.coverUrl}
-                  // QUAN TRỌNG: Kiểm tra xem ID sách này có trong danh sách favorites không
                   isFavorite={favorites.includes(book._id)}
-
-                  // Truyền hàm xử lý vào
                   onFavoriteToggle={() => handleToggleFavorite(book._id)}
-
                   onClick={() => navigate(`/read/${book._id}`)}
                 />
               </div>
@@ -155,12 +144,29 @@ export function BookCategoryRow({ title, category, icon }: BookCategoryRowProps)
         )}
       </div>
 
-      {/* Giữ nguyên phần style scrollbar cũ của bạn ở đây */}
+      {/* CSS: Ép màu thanh cuộn thật đậm để bạn nhìn thấy */}
       <style>{`
-        .scrollbar-thin::-webkit-scrollbar { height: 8px; }
-        .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-        .scrollbar-thin::-webkit-scrollbar-thumb { background-color: #e5e7eb; border-radius: 20px; }
-        .scrollbar-thin::-webkit-scrollbar-thumb:hover { background-color: #d1d5db; }
+        .scrollbar-force::-webkit-scrollbar {
+          height: 10px;
+        }
+        
+        /* 1. SỬA MÀU NỀN ĐƯỜNG RAY: Chuyển từ #a3a3a3 sang #f1f1f1 (xám rất nhạt) */
+        .scrollbar-force::-webkit-scrollbar-track {
+          background: #a3a3a3; 
+          border-radius: 4px;
+        }
+
+        /* 2. THANH KÉO: Giữ màu đậm để nổi bật */
+        .scrollbar-force::-webkit-scrollbar-thumb {
+          background-color: #a3a3a3; /* Màu xám đậm */
+          border-radius: 20px;
+          border: 2px solid transparent; 
+          background-clip: content-box;
+        }
+
+        .scrollbar-force::-webkit-scrollbar-thumb:hover {
+          background-color: #737373; /* Đậm hơn khi di chuột vào */
+        }
       `}</style>
     </div>
   );
