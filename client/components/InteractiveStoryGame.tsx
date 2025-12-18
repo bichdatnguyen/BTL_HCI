@@ -26,13 +26,17 @@ export function InteractiveStoryGame() {
     const [isPlaying, setIsPlaying] = useState(false);
     const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
     const [showEndModal, setShowEndModal] = useState(false);
+    const currentStreak = parseInt(localStorage.getItem("currentStreak") || "0");
+    const userName = localStorage.getItem("userName") || "Bạn nhỏ";
+    const userAvatar = localStorage.getItem("userAvatar") || "";
 
     // Thiết lập Header trang
     useSetPageHeader({
         title: selectedStory ? selectedStory.title : "📚 Thư Viện Truyện",
         subtitle: "Đọc và lựa chọn con đường cho câu chuyện",
-        userName: "T",
-        streakCount: 5,
+        userName: userName,      // Thay vì "T"
+        userAvatar: userAvatar,  // Để hiện đúng avatar
+        streakCount: currentStreak,
     });
 
     // --- LOGIC TÍNH SAO (Chỉ để hiển thị kết quả cuối game) ---

@@ -38,12 +38,16 @@ interface GameState {
 }
 
 export function WordMatchingGame() {
+  const currentStreak = parseInt(localStorage.getItem("currentStreak") || "0");
+  const userName = localStorage.getItem("userName") || "Bạn nhỏ";
+  const userAvatar = localStorage.getItem("userAvatar") || "";
   const navigate = useNavigate();
   useSetPageHeader({
     title: "🎯 Ghép Từ",
     subtitle: "Ghép từ với hình ảnh để học tập",
-    userName: "T",
-    streakCount: 5,
+    userName: userName,
+    userAvatar: userAvatar,
+    streakCount: currentStreak,
   });
 
   const [selectedRounds, setSelectedRounds] = useState<GameRound[]>([]);

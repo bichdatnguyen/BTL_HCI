@@ -130,11 +130,16 @@ const getCellsBetween = (start: [number, number], end: [number, number]): [numbe
 
 export function WordSearchGame() {
   const navigate = useNavigate();
+  const currentStreak = parseInt(localStorage.getItem("currentStreak") || "0");
+  const userName = localStorage.getItem("userName") || "Bạn nhỏ";
+  const userAvatar = localStorage.getItem("userAvatar") || "";
+
   useSetPageHeader({
     title: "🔍 Tìm Từ",
     subtitle: "Tìm những từ ẩn trong lưới",
-    userName: "T",
-    streakCount: 5,
+    userName: userName,
+    userAvatar: userAvatar,
+    streakCount: currentStreak,
   });
 
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");

@@ -12,12 +12,17 @@ interface IWindow extends Window {
 }
 
 export default function PronunciationGame() {
+  const currentStreak = parseInt(localStorage.getItem("currentStreak") || "0");
+  const userName = localStorage.getItem("userName") || "Bạn nhỏ";
+  const userAvatar = localStorage.getItem("userAvatar") || "";
+
   const navigate = useNavigate();
   useSetPageHeader({
     title: "🔊 Luyện Âm Vị (Giọng Nói)",
     subtitle: "Nghe – Nói – Được chấm điểm tự động",
-    userName: "T",
-    streakCount: 5,
+    userName: userName,      // Thay vì "T"
+    userAvatar: userAvatar,  // Để hiện đúng avatar
+    streakCount: currentStreak,
   });
 
   const [roundWords, setRoundWords] = useState<WordItem[]>([]);
