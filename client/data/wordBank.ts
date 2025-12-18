@@ -55,7 +55,7 @@ export const WORD_BANK: WordItem[] = [
   { id: "43", word: "sỏi", difficulty: "hard" },
   { id: "44", word: "sấm", difficulty: "hard" },
   { id: "45", word: "sách", difficulty: "hard" },
-  { id: "46", word: "xôi", difficulty: "hard" },
+  { id: "46", word: "suôi", difficulty: "hard" },
   { id: "47", word: "xào", difficulty: "hard" },
   { id: "48", word: "xanh", difficulty: "hard" },
   { id: "49", word: "sao", difficulty: "hard" },

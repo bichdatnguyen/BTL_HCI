@@ -70,9 +70,11 @@ export default function PronunciationGame() {
   });
 
   const generateWords = () => {
-    const easyWords = WORD_BANK.filter((w) => w.difficulty === "easy").sort(() => Math.random() - 0.5).slice(0, 4);
-    const mediumWords = WORD_BANK.filter((w) => w.difficulty === "medium").sort(() => Math.random() - 0.5).slice(0, 3);
-    const hardWords = WORD_BANK.filter((w) => w.difficulty === "hard").sort(() => Math.random() - 0.5).slice(0, 3);
+    // Sửa lại số lượng: 2 Dễ + 2 Vừa + 1 Khó = 5 câu
+    const easyWords = WORD_BANK.filter((w) => w.difficulty === "easy").sort(() => Math.random() - 0.5).slice(0, 3);
+    const mediumWords = WORD_BANK.filter((w) => w.difficulty === "medium").sort(() => Math.random() - 0.5).slice(0, 1);
+    const hardWords = WORD_BANK.filter((w) => w.difficulty === "hard").sort(() => Math.random() - 0.5).slice(0, 1);
+
     const combined = [...easyWords, ...mediumWords, ...hardWords].sort(() => Math.random() - 0.5);
     setRoundWords(combined);
   };
@@ -229,6 +231,9 @@ export default function PronunciationGame() {
     </svg>
   );
 
+  // --- BIẾN ĐỂ HIỂN THỊ TỔNG SỐ CÂU (Mặc định là 5 nếu chưa tải xong dữ liệu) ---
+  const TOTAL_QUESTIONS = roundWords.length > 0 ? roundWords.length : 5;
+
   if (isGameFinished) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -239,7 +244,8 @@ export default function PronunciationGame() {
 
           <div className="bg-secondary/30 rounded-2xl p-6 mb-8">
             <p className="text-sm text-muted-foreground uppercase font-bold tracking-wider mb-2">Số câu đạt chuẩn</p>
-            <p className="text-5xl font-black text-primary">{correctCount}/10</p>
+            {/* Sửa hiển thị kết quả tổng */}
+            <p className="text-5xl font-black text-primary">{correctCount}/{TOTAL_QUESTIONS}</p>
           </div>
 
           <div className="flex flex-col gap-3">
@@ -261,13 +267,16 @@ export default function PronunciationGame() {
     <div className="min-h-screen p-6 bg-background flex justify-center">
       <div className="max-w-xl w-full bg-card p-6 rounded-3xl shadow-lg text-center h-fit border border-border">
 
-        {/* THANH TIẾN ĐỘ: DỰA TRÊN CORRECT COUNT */}
+        {/* THANH TIẾN ĐỘ: DỰA TRÊN TỔNG SỐ CÂU MỚI (5) */}
         <div className="mb-6 flex justify-between items-center text-sm font-semibold text-muted-foreground">
           <span>Đạt chuẩn</span>
-          <span className="text-primary font-bold text-lg">{correctCount}/10</span>
+          <span className="text-primary font-bold text-lg">{correctCount}/{TOTAL_QUESTIONS}</span>
         </div>
         <div className="w-full bg-muted rounded-full h-2 mb-10">
-          <div className="bg-primary h-2 rounded-full transition-all duration-300" style={{ width: `${(correctCount / 10) * 100}%` }}></div>
+          <div
+            className="bg-primary h-2 rounded-full transition-all duration-300"
+            style={{ width: `${(correctCount / TOTAL_QUESTIONS) * 100}%` }}
+          ></div>
         </div>
 
         <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">{currentWord.word}</h2>
