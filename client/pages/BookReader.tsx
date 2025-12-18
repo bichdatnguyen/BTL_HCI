@@ -17,6 +17,11 @@ export default function BookReader() {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
 
+  // Thêm useRef cho Animation
+  const progressInterval = useRef<NodeJS.Timeout | null>(null);
+  const startTimeRef = useRef<number>(0);
+  const [smoothProgress, setSmoothProgress] = useState(0); // State mới cho thanh mượt
+  const isFinishedRef = useRef(false);
   // Ref cho giọng đọc
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
   const synth = window.speechSynthesis;
@@ -64,47 +69,113 @@ export default function BookReader() {
     }
   }, [bookId]);
 
-  // --- 2. XỬ LÝ GIỌNG ĐỌC (AI) ---
+  useEffect(() => {
+    // Chỉ đếm khi đang không Loading
+    const interval = setInterval(() => {
+      // Cứ mỗi 10 giây, gọi API cập nhật 1 lần
+      // (Không nên gọi mỗi giây vì sẽ làm lag server)
+      const userId = localStorage.getItem("userId");
+      if (userId) {
+        fetch("http://localhost:5000/api/users/progress", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            type: "read",
+            value: 10 // Cộng thêm 10 giây
+          })
+        });
+      }
+    }, 10000); // 10 giâ
+    return () => clearInterval(interval); // Dọn dẹp khi thoát trang
+  }, []);
+
+  // --- 3. XỬ LÝ GIỌNG ĐỌC & HIỆU ỨNG THANH TIẾN ĐỘ ---
+  // --- 3. XỬ LÝ GIỌNG ĐỌC & HIỆU ỨNG (ĐÃ SỬA LỖI LÙI THANH) ---
   useEffect(() => {
     if (sentences.length === 0) return;
 
-    // Hủy lệnh đọc cũ trước khi đọc câu mới
+    // Hủy lệnh cũ
     synth.cancel();
+    if (progressInterval.current) clearInterval(progressInterval.current);
 
     const textToRead = sentences[currentSentenceIndex];
     const utterance = new SpeechSynthesisUtterance(textToRead);
 
-    utterance.lang = "vi-VN"; // Giọng đọc tiếng Việt
+    utterance.lang = "vi-VN";
     utterance.rate = playbackRate;
     utterance.volume = isMuted ? 0 : 1;
 
-    // Khi đọc xong 1 câu -> Tự chuyển sang câu tiếp theo
+    // Tính toán số ký tự
+    const totalCharsBook = sentences.reduce((acc, s) => acc + s.length, 0);
+    const charsReadBefore = sentences
+      .slice(0, currentSentenceIndex)
+      .reduce((acc, s) => acc + s.length, 0);
+
+    const estimatedDuration = (textToRead.length * 60) / playbackRate;
+
+    utterance.onstart = () => {
+      startTimeRef.current = Date.now();
+
+      progressInterval.current = setInterval(() => {
+        const elapsed = Date.now() - startTimeRef.current;
+        const percentOfSentence = Math.min(elapsed / estimatedDuration, 0.98);
+
+        const currentChars = charsReadBefore + (textToRead.length * percentOfSentence);
+        const totalPercent = (currentChars / totalCharsBook) * 100;
+
+        setSmoothProgress(totalPercent);
+      }, 50);
+    };
+
     utterance.onend = () => {
+      if (progressInterval.current) clearInterval(progressInterval.current);
+
+      const finishedChars = charsReadBefore + textToRead.length;
+      // Tạm thời set đúng tiến độ hết câu
+      setSmoothProgress((finishedChars / totalCharsBook) * 100);
+
       if (currentSentenceIndex < sentences.length - 1 && isPlaying) {
-        setCurrentSentenceIndex(prev => prev + 1);
+        setCurrentSentenceIndex((prev) => prev + 1);
       } else {
-        setIsPlaying(false); // Hết bài thì dừng
+        // 🔥 Đã đọc xong hết bài
+        isFinishedRef.current = true; // Đánh dấu là đã xong
+        setIsPlaying(false);
+        setSmoothProgress(100); // Ép về 100%
       }
     };
 
     speechRef.current = utterance;
 
-    // Nếu đang Play thì đọc luôn
     if (isPlaying) {
+      // Khi bắt đầu đọc lại, reset cờ finished
+      isFinishedRef.current = false;
       synth.speak(utterance);
+    } else {
+      // Logic khi Pause hoặc Stop
+      if (progressInterval.current) clearInterval(progressInterval.current);
+
+      // 🔥 FIX LỖI: Nếu đã finish thì giữ nguyên 100%, không lùi lại
+      if (isFinishedRef.current) {
+        setSmoothProgress(100);
+      } else {
+        // Nếu chỉ là Pause giữa chừng thì mới tính toán lại vị trí
+        const pausedPercent = (charsReadBefore / totalCharsBook) * 100;
+        setSmoothProgress(pausedPercent);
+      }
     }
 
-    // Dọn dẹp khi thoát trang
     return () => {
       synth.cancel();
+      if (progressInterval.current) clearInterval(progressInterval.current);
     };
   }, [currentSentenceIndex, sentences, playbackRate, isMuted, isPlaying]);
 
-  // --- HÀM ĐIỀU KHIỂN ---
   const togglePlay = () => {
     if (isPlaying) {
-      synth.cancel();
+      synth.cancel(); // Dừng đọc ngay lập tức
       setIsPlaying(false);
+      if (progressInterval.current) clearInterval(progressInterval.current); // Dừng thanh chạy
     } else {
       setIsPlaying(true);
     }
@@ -173,10 +244,11 @@ export default function BookReader() {
         <div className="max-w-3xl mx-auto relative">
 
           {/* Thanh tiến trình */}
-          <div className="relative w-full h-2 bg-gray-100 rounded-full mb-8 overflow-hidden">
+          <div className="relative w-full h-2 bg-gray-100 rounded-full mb-8 overflow-hidden cursor-pointer">
+            {/* Thanh màu xanh chạy mượt */}
             <div
-              className="absolute top-0 left-0 h-full bg-green-500 rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${progressPercentage}%` }}
+              className="absolute top-0 left-0 h-full bg-green-500 rounded-full transition-all duration-75 ease-linear" // duration-75 để chạy mượt từng milimet
+              style={{ width: `${smoothProgress}%` }}
             />
           </div>
 

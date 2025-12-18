@@ -1,6 +1,8 @@
+// LibrarySection.tsx
 import { useEffect, useState } from "react";
-import { DashboardSection } from "./DashboardCard"; // Giữ lại khung section
-import { BookCard } from "./BookCard"; // Dùng BookCard mới để hiện ảnh
+import { useNavigate } from "react-router-dom"; // <--- 1. Thêm dòng này
+import { DashboardSection } from "./DashboardCard";
+import { BookCard } from "./BookCard";
 
 interface Book {
   _id: string;
@@ -10,45 +12,50 @@ interface Book {
 }
 
 export function LibrarySection() {
-  const [books, setBooks] = useState<Book[]>([]);
+  const [favoriteBooks, setFavoriteBooks] = useState<Book[]>([]);
   const userId = localStorage.getItem("userId");
 
-  // Gọi API lấy sách cá nhân để hiện ra trang chủ
+  const navigate = useNavigate(); // <--- 2. Khai báo hàm chuyển trang
+
   useEffect(() => {
-    const fetchBooks = async () => {
+    const fetchFavorites = async () => {
       if (!userId) return;
       try {
-        const response = await fetch(`http://localhost:5000/api/my-books?userId=${userId}`);
-        const data = await response.json();
-        // Chỉ lấy 6 cuốn mới nhất để hiển thị
-        setBooks(data.slice(0, 6));
+        const response = await fetch(`http://localhost:5000/api/users/${userId}/favorites`);
+
+        if (response.ok) {
+          const data = await response.json();
+          setFavoriteBooks(data);
+        }
       } catch (error) {
-        console.error("Lỗi tải sách:", error);
+        console.error("Lỗi tải sách yêu thích:", error);
       }
     };
-    fetchBooks();
+    fetchFavorites();
   }, [userId]);
 
   return (
-    <DashboardSection title="📚 Thư viện của tôi" className="mb-10">
-      {books.length > 0 ? (
+    <DashboardSection title="❤️ Sách yêu thích" className="mb-10">
+      {favoriteBooks.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-5">
-          {books.map((book) => (
+          {favoriteBooks.map((book) => (
             <div key={book._id} className="flex justify-center">
               <BookCard
                 id={book._id}
                 title={book.title}
                 coverUrl={book.coverUrl}
-                // author={book.author} // Bỏ tác giả nếu muốn gọn
-                onClick={() => console.log(`Đọc sách: ${book._id}`)}
+                isFavorite={true}
+
+                // <--- 3. SỬA DÒNG NÀY: Chuyển hướng đến trang đọc sách
+                onClick={() => navigate(`/read/${book._id}`)}
               />
             </div>
           ))}
         </div>
       ) : (
         <div className="text-center py-8 text-muted-foreground bg-secondary/20 rounded-xl">
-          <p>Bạn chưa có cuốn sách nào.</p>
-          <p className="text-sm">Hãy vào Thư viện để thêm sách mới nhé!</p>
+          <p>Bạn chưa có cuốn sách yêu thích nào.</p>
+          <p className="text-sm">Hãy thả tim ❤️ vào các cuốn sách bạn thích nhé!</p>
         </div>
       )}
     </DashboardSection>
