@@ -1,5 +1,5 @@
 import { Heart, Trash2, Upload } from "lucide-react";
-import { useState } from "react"; // Vẫn giữ useState cho menu, nhưng bỏ cho favorite
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 export interface BookCardProps {
@@ -7,7 +7,7 @@ export interface BookCardProps {
   title: string;
   coverUrl?: string;
   status?: "pending" | "approved";
-  isFavorite?: boolean; // Nhận trạng thái từ cha
+  isFavorite?: boolean;
   isUpload?: boolean;
   onFavoriteToggle?: (id: string) => void;
   onClick?: () => void;
@@ -20,23 +20,18 @@ export function BookCard({
   title,
   coverUrl,
   status,
-  isFavorite = false, // Mặc định là false nếu không truyền
+  isFavorite = false,
   isUpload = false,
   onFavoriteToggle,
   onClick,
   onFileUpload,
   onDelete,
 }: BookCardProps) {
-  // ❌ ĐÃ XÓA: const [favorite, setFavorite] = useState(isFavorite);
-  // Lý do: Để component cha quyết định việc tô đỏ hay không thông qua props isFavorite
-
   const [showMenu, setShowMenu] = useState(false);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // ❌ ĐÃ XÓA: setFavorite(!favorite); 
-    // ✅ CHỈ GỌI HÀM NÀY: Để báo cho cha biết mà cập nhật dữ liệu gốc
     onFavoriteToggle?.(id);
   };
 

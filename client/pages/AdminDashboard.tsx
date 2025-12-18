@@ -151,24 +151,48 @@ export default function AdminDashboard() {
                 {/* Book Moderation Section */}
                 <section className="xl:col-span-2 space-y-6">
                     <h2 className="text-3xl font-bold text-foreground">Duyệt sách đóng góp</h2>
-                    <div className="space-y-4">
-                        {pendingBooksList.length > 0 ? (
-                            pendingBooksList.map((book) => (
-                                <ModerationCard
-                                    key={book.id}
-                                    book={book}
-                                    onView={handleViewBook}
-                                    onApprove={handleApprove}
-                                    onReject={handleReject}
-                                />
-                            ))
-                        ) : (
-                            <div className="text-center py-12 bg-muted/20 rounded-3xl border border-dashed">
-                                <p className="text-muted-foreground text-lg">
-                                    Không có sách nào cần duyệt 🎉
-                                </p>
-                            </div>
-                        )}
+
+                    {/* 1. TẠO CONTAINER KHUNG TRẮNG (GIỐNG ACTIVITY LOG) */}
+                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-border h-[600px] flex flex-col">
+
+                        {/* Header nhỏ bên trong để hiển thị số lượng (Tùy chọn cho đẹp) */}
+                        <div className="mb-4 pb-2 border-b border-gray-100 flex justify-between items-center">
+                            <span className="text-sm font-bold text-gray-500 uppercase tracking-wider">
+                                Danh sách chờ
+                            </span>
+                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${pendingBooksList.length > 0
+                                ? "bg-orange-100 text-orange-600"
+                                : "bg-green-100 text-green-600"
+                                }`}>
+                                {pendingBooksList.length} yêu cầu
+                            </span>
+                        </div>
+
+                        {/* 2. VÙNG CUỘN (SCROLLABLE AREA) */}
+                        {/* max-h-[600px]: Cho phép vùng này cao hơn ActivityLog một chút vì thẻ sách to hơn */}
+                        <div className="overflow-y-auto flex-1 pr-2 space-y-4 custom-scrollbar">
+                            {pendingBooksList.length > 0 ? (
+                                pendingBooksList.map((book) => (
+                                    <ModerationCard
+                                        key={book.id}
+                                        book={book}
+                                        onView={handleViewBook}
+                                        onApprove={handleApprove}
+                                        onReject={handleReject}
+                                    />
+                                ))
+                            ) : (
+                                // Giao diện khi trống
+                                <div className="text-center py-20 flex flex-col items-center justify-center opacity-60">
+                                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-4xl">
+                                        🎉
+                                    </div>
+                                    <p className="text-gray-500 font-medium text-lg">
+                                        Tuyệt vời! Không còn sách nào cần duyệt.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </section>
 

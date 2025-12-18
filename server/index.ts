@@ -1,14 +1,3 @@
-if (typeof global.DOMMatrix === 'undefined') {
-  (global as any).DOMMatrix = class DOMMatrix {
-    a = 1; b = 0; c = 0; d = 1; e = 0; f = 0; // Ma trận đơn vị mặc định
-    constructor() { }
-    // Các phương thức giả lập nếu cần thiết để tránh crash
-    multiply() { return this; }
-    translate() { return this; }
-    scale() { return this; }
-  };
-}
-
 import "dotenv/config"; // Nạp biến môi trường từ file .env đầu tiên
 import express from 'express';
 import cors from 'cors';
@@ -16,7 +5,8 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import multer from 'multer';
 
-const pdfParseLib = require('pdf-parse');
+// Sửa dòng import này:
+const pdfParse = require('pdf-parse');
 
 // Khởi tạo app
 const app = express();
@@ -309,33 +299,22 @@ app.post("/api/my-books", upload.single('file'), async (req: any, res) => {
     }
 
     const { title, userId, uploadedBy } = req.body;
-    let extractedContent = "";
+    let extractedContent = ""; // Sửa lỗi chính tả 'leta' thành 'let'
 
     // 2. XỬ LÝ NỘI DUNG
     if (req.file.mimetype === 'application/pdf') {
+      try {
+        // Gọi hàm trực tiếp (Yêu cầu đã cài bản chuẩn: npm install pdf-parse)
+        // Lưu ý: Đảm bảo ở đầu file index.ts bạn đã khai báo: 
+        // const pdfParseLib = require('pdf-parse');
 
-      // --- ĐOẠN CODE DEBUG (THÊM VÀO ĐỂ SOI LỖI) ---
-      console.log("------------------------------------------------");
-      console.log("🔍 DEBUG pdf-parse:");
-      console.log("1. Type:", typeof pdfParseLib);
-      console.log("2. Keys:", Object.keys(pdfParseLib)); // Xem nó có chứa những hàm nào
-      console.log("3. Content:", pdfParseLib);          // In nội dung ra xem
-      console.log("------------------------------------------------");
+        const data = await pdfParse(req.file.buffer);
+        extractedContent = data.text;
 
-      // Thử tìm hàm đúng một cách thông minh
-      // Ưu tiên 1: .default (nếu import ES6)
-      // Ưu tiên 2: .PDFParse (nếu là named export)
-      // Ưu tiên 3: Chính nó (nếu là function)
-      let pdfParse = pdfParseLib.default || pdfParseLib.PDFParse || pdfParseLib;
-
-      if (typeof pdfParse !== 'function') {
-        throw new Error(`Vẫn không tìm thấy hàm! Type hiện tại là: ${typeof pdfParse}`);
+      } catch (pdfError) {
+        console.error("⚠️ Lỗi đọc nội dung PDF:", pdfError);
+        extractedContent = "Không thể trích xuất văn bản từ file PDF này (Có thể là file ảnh scan hoặc bị mã hóa).";
       }
-
-      const data = await pdfParse(req.file.buffer);
-      extractedContent = data.text;
-      // ---------------------------------------------
-
     } else {
       // Nếu là .txt
       extractedContent = req.file.buffer.toString('utf-8');
@@ -343,7 +322,7 @@ app.post("/api/my-books", upload.single('file'), async (req: any, res) => {
 
     // Kiểm tra nội dung rỗng
     if (!extractedContent || !extractedContent.trim()) {
-      extractedContent = "Không đọc được nội dung (File ảnh hoặc PDF scan).";
+      extractedContent = "Nội dung trống hoặc không đọc được.";
     }
 
     // 3. Lưu vào Database
@@ -361,7 +340,7 @@ app.post("/api/my-books", upload.single('file'), async (req: any, res) => {
     res.status(201).json({ message: "Upload thành công!", book: newBook });
 
   } catch (err) {
-    console.error("❌ Lỗi chi tiết:", err); // Dòng này sẽ giúp bạn nhìn thấy lỗi rõ hơn
+    console.error("❌ Lỗi Server:", err);
     res.status(500).json({ message: "Lỗi Server: " + err.message });
   }
 });

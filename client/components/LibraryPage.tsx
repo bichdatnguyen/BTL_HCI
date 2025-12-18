@@ -59,7 +59,6 @@ export function LibraryPage() {
     streakCount: parseInt(localStorage.getItem("currentStreak") || "0"),
   });
 
-  // 1. Gọi API lấy sách cá nhân thật
   // 1. Gọi API lấy sách cá nhân thật (Cả approved và pending)
   useEffect(() => {
     const fetchPersonalBooks = async () => {
@@ -88,7 +87,7 @@ export function LibraryPage() {
   useEffect(() => {
     const fetchSystemBooks = async () => {
       try {
-        // Gọi API lấy toàn bộ sách hệ thống (không lọc category)
+
         const response = await fetch("http://localhost:5000/api/books");
         const data = await response.json();
         setSystemBooks(data);
@@ -131,8 +130,6 @@ export function LibraryPage() {
     formData.append("uploadedBy", username);
 
     try {
-      // Gửi FormData lên Server
-      // LƯU Ý: Khi gửi FormData, KHÔNG cần header 'Content-Type': 'application/json'
       const response = await fetch("http://localhost:5000/api/my-books", {
         method: "POST",
         body: formData,
