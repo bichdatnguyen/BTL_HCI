@@ -1,0 +1,188 @@
+/** @import must precede all other statements */
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /**
+   * Tailwind CSS theme - Child-friendly, dyslexia-accessible design
+   * tailwind.config.ts expects the following color variables to be expressed as HSL values.
+   * A different format will require also updating the theme in tailwind.config.ts.
+  */
+  :root {
+    /* Warm cream background for reduced eye strain */
+    --background: 45 40% 96%;
+    /* Dark navy for high contrast text */
+    --foreground: 220 15% 15%;
+
+    /* Clean white cards with shadow */
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 15%;
+
+    /* Popover styling */
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 15%;
+
+    /* Soft, calming green as primary */
+    --primary: 140 45% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Light mint secondary */
+    --secondary: 160 50% 85%;
+    --secondary-foreground: 220 15% 15%;
+
+    /* Muted grays */
+    --muted: 220 10% 85%;
+    --muted-foreground: 220 10% 45%;
+
+    /* Soft blue accent */
+    --accent: 200 40% 70%;
+    --accent-foreground: 220 15% 15%;
+
+    /* Error state - soft red */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Borders */
+    --border: 220 15% 90%;
+    --input: 220 15% 92%;
+    --ring: 140 45% 55%;
+
+    /* Increased border radius for child-friendly look */
+    --radius: 1rem;
+
+    /* Sidebar colors */
+    --sidebar-background: 45 40% 97%;
+    --sidebar-foreground: 220 15% 15%;
+    --sidebar-primary: 140 45% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 160 50% 85%;
+    --sidebar-accent-foreground: 220 15% 15%;
+    --sidebar-border: 220 15% 90%;
+    --sidebar-ring: 140 45% 55%;
+
+    /* Success state - medium green */
+    --success: 130 50% 60%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning state - soft orange */
+    --warning: 40 90% 60%;
+    --warning-foreground: 220 15% 15%;
+  }
+
+  .dark {
+    /* Dark mode - maintain accessibility */
+    --background: 220 15% 20%;
+    --foreground: 45 40% 95%;
+
+    --card: 220 15% 25%;
+    --card-foreground: 45 40% 95%;
+
+    --popover: 220 15% 25%;
+    --popover-foreground: 45 40% 95%;
+
+    --primary: 140 45% 65%;
+    --primary-foreground: 220 15% 15%;
+
+    --secondary: 160 50% 70%;
+    --secondary-foreground: 220 15% 15%;
+
+    --muted: 220 10% 35%;
+    --muted-foreground: 220 10% 70%;
+
+    --accent: 200 40% 75%;
+    --accent-foreground: 220 15% 15%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 220 15% 20%;
+
+    --border: 220 15% 35%;
+    --input: 220 15% 30%;
+    --ring: 140 45% 65%;
+
+    --sidebar-background: 220 15% 22%;
+    --sidebar-foreground: 45 40% 95%;
+    --sidebar-primary: 140 45% 65%;
+    --sidebar-primary-foreground: 220 15% 15%;
+    --sidebar-accent: 160 50% 70%;
+    --sidebar-accent-foreground: 220 15% 15%;
+    --sidebar-border: 220 15% 35%;
+    --sidebar-ring: 140 45% 65%;
+
+    --success: 130 50% 70%;
+    --success-foreground: 220 15% 15%;
+
+    --warning: 40 90% 65%;
+    --warning-foreground: 220 15% 15%;
+  }
+}
+
+/* Dyslexia-friendly font settings */
+html {
+  font-family: "Poppins", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    line-height: 1.6;
+    letter-spacing: 0.3px;
+  }
+
+  :where(p, span, li, h1, h2, h3, h4, h5, h6, a, button, label, td, th) {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* Large, friendly typography for children */
+  h1 {
+    @apply text-4xl font-bold tracking-tight;
+  }
+
+  h2 {
+    @apply text-3xl font-bold;
+  }
+
+  h3 {
+    @apply text-2xl font-semibold;
+  }
+
+  h4 {
+    @apply text-xl font-semibold;
+  }
+
+  h5 {
+    @apply text-lg font-semibold;
+  }
+
+  h6 {
+    @apply text-base font-semibold;
+  }
+
+  p {
+    @apply text-lg leading-relaxed;
+  }
+
+  button {
+    transition: all 0.2s ease-in-out;
+  }
+
+  pre,
+  code {
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  /* Accessibility improvements */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2;
+  }
+}
