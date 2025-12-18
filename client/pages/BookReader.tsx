@@ -32,7 +32,9 @@ export default function BookReader() {
       try {
         setIsLoading(true);
         // Gọi API với ID lấy từ URL
-        const response = await fetch(`http://localhost:5000/api/books/${bookId}`);
+        const response = await fetch(
+          `http://localhost:5000/api/books/${bookId}`,
+        );
         if (!response.ok) {
           throw new Error("Không tìm thấy sách");
         }
@@ -42,17 +44,22 @@ export default function BookReader() {
           setBookTitle(data.title || "Không có tên");
 
           // Lấy nội dung thô
-          let rawContent = data.content || "Nội dung cuốn sách này đang được cập nhật.";
+          let rawContent =
+            data.content || "Nội dung cuốn sách này đang được cập nhật.";
 
           // --- 🛠️ BỔ SUNG: LÀM SẠCH VĂN BẢN PDF ---
-          // File PDF thường bị ngắt dòng lung tung. 
+          // File PDF thường bị ngắt dòng lung tung.
           // Lệnh này sẽ thay thế dấu xuống dòng (\n) bằng dấu cách.
           rawContent = rawContent.replace(/\n/g, " ").replace(/\s+/g, " ");
           // ----------------------------------------
 
           // Logic tách câu cũ của bạn vẫn giữ nguyên
-          const splitText = rawContent.match(/[^.?!]+[.?!]+["']?|[^.?!]+$/g) || [rawContent];
-          const cleanSentences = splitText.map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+          const splitText = rawContent.match(
+            /[^.?!]+[.?!]+["']?|[^.?!]+$/g,
+          ) || [rawContent];
+          const cleanSentences = splitText
+            .map((s: string) => s.trim())
+            .filter((s: string) => s.length > 0);
 
           setSentences(cleanSentences);
         }
@@ -76,14 +83,14 @@ export default function BookReader() {
       // (Không nên gọi mỗi giây vì sẽ làm lag server)
       const userId = localStorage.getItem("userId");
       if (userId) {
-        fetch("http://localhost:5000/api/users/progress", {
+        fetch(`http://localhost:5000/api/users/progress`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId,
             type: "read",
-            value: 10 // Cộng thêm 10 giây
-          })
+            value: 10, // Cộng thêm 10 giây
+          }),
         });
       }
     }, 10000); // 10 giâ
@@ -121,7 +128,8 @@ export default function BookReader() {
         const elapsed = Date.now() - startTimeRef.current;
         const percentOfSentence = Math.min(elapsed / estimatedDuration, 0.98);
 
-        const currentChars = charsReadBefore + (textToRead.length * percentOfSentence);
+        const currentChars =
+          charsReadBefore + textToRead.length * percentOfSentence;
         const totalPercent = (currentChars / totalCharsBook) * 100;
 
         setSmoothProgress(totalPercent);
@@ -183,13 +191,15 @@ export default function BookReader() {
 
   const changeSpeed = () => {
     if (playbackRate === 1) setPlaybackRate(1.5);
-    else if (playbackRate === 1.5) setPlaybackRate(0.75); // Đọc chậm
+    else if (playbackRate === 1.5)
+      setPlaybackRate(0.75); // Đọc chậm
     else setPlaybackRate(1);
   };
 
-  const progressPercentage = sentences.length > 0
-    ? ((currentSentenceIndex + 1) / sentences.length) * 100
-    : 0;
+  const progressPercentage =
+    sentences.length > 0
+      ? ((currentSentenceIndex + 1) / sentences.length) * 100
+      : 0;
 
   return (
     <div className="min-h-screen bg-[#FDFCF6] flex flex-col">
@@ -226,9 +236,11 @@ export default function BookReader() {
                   }}
                   className={`
                     transition-all duration-300 rounded px-1 py-0.5 cursor-pointer hover:bg-gray-50
-                    ${index === currentSentenceIndex
-                      ? "bg-[#FFF9C4] text-gray-900 shadow-sm decoration-2 underline-offset-4"
-                      : ""}
+                    ${
+                      index === currentSentenceIndex
+                        ? "bg-[#FFF9C4] text-gray-900 shadow-sm decoration-2 underline-offset-4"
+                        : ""
+                    }
                   `}
                 >
                   {sentence}{" "}
@@ -242,7 +254,6 @@ export default function BookReader() {
       {/* THANH ĐIỀU KHIỂN (PLAYER) */}
       <div className="fixed bottom-0 left-0 w-full bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.08)] px-6 py-6 rounded-t-[32px] border-t border-gray-100">
         <div className="max-w-3xl mx-auto relative">
-
           {/* Thanh tiến trình */}
           <div className="relative w-full h-2 bg-gray-100 rounded-full mb-8 overflow-hidden cursor-pointer">
             {/* Thanh màu xanh chạy mượt */}
@@ -261,7 +272,10 @@ export default function BookReader() {
             {/* Cụm nút trung tâm */}
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-6 md:gap-8">
               {/* Nút Tốc độ */}
-              <button onClick={changeSpeed} className="w-10 h-10 rounded-full bg-gray-50 text-gray-600 font-bold text-xs hover:bg-gray-100 transition-colors">
+              <button
+                onClick={changeSpeed}
+                className="w-10 h-10 rounded-full bg-gray-50 text-gray-600 font-bold text-xs hover:bg-gray-100 transition-colors"
+              >
                 {playbackRate}x
               </button>
 
@@ -278,8 +292,15 @@ export default function BookReader() {
               </button>
 
               {/* Nút Âm lượng */}
-              <button onClick={() => setIsMuted(!isMuted)} className="w-10 h-10 rounded-full bg-gray-50 text-gray-600 flex items-center justify-center hover:bg-gray-100 transition-colors">
-                {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+              <button
+                onClick={() => setIsMuted(!isMuted)}
+                className="w-10 h-10 rounded-full bg-gray-50 text-gray-600 flex items-center justify-center hover:bg-gray-100 transition-colors"
+              >
+                {isMuted ? (
+                  <VolumeX className="w-5 h-5" />
+                ) : (
+                  <Volume2 className="w-5 h-5" />
+                )}
               </button>
             </div>
 
