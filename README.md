@@ -41,7 +41,7 @@ Icons: Lucide React
 
 Web APIs: Web Speech API (SpeechSynthesis & SpeechRecognition), Drag & Drop API.
 
-2.Backend (Server)
+2. Backend (Server)
 
 Runtime: Node.js
 
@@ -60,43 +60,43 @@ _🚀 Hướng Dẫn Cài Đặt (Installation)_
 
 Bước 1: Clone dự án
 
-git clone https://github.com/username/ten-du-an-cua-ban.git
+   git clone https://github.com/username/ten-du-an-cua-ban.git
 
-cd ten-du-an-cua-ban
+   cd ten-du-an-cua-ban
 
 
 Bước 2: Cài đặt & Cấu hình Backend (Server)
 
-Di chuyển vào thư mục server: cd server
+   Di chuyển vào thư mục server: cd server
 
-Cài đặt các gói thư viện (dependencies): npm install
+   Cài đặt các gói thư viện (dependencies): npm install
 
 
-Hoặc nếu dùng yarn: 
-yarn install
+   Hoặc nếu dùng yarn: 
+   yarn install
 
-Tạo file môi trường .env: Tạo một file tên .env trong thư mục server/ và điền nội dung sau:
+   Tạo file môi trường .env: Tạo một file tên .env trong thư mục server/ và điền nội dung sau:
 
-PORT=5000
+   PORT=5000
 
-MONGO_URI=mongodb://localhost:27017/dyslexia_db
+   MONGO_URI=mongodb://localhost:27017/dyslexia_db
 
-Nếu dùng MongoDB Atlas, hãy thay đường dẫn trên bằng connection string của bạn
+   Nếu dùng MongoDB Atlas, hãy thay đường dẫn trên bằng connection string của bạn
 
-Khởi chạy Server: npm run dev
+   Khởi chạy Server: npm run dev
 
-Server sẽ chạy tại: http://localhost:5000
+   Server sẽ chạy tại: http://localhost:5000
 
 
 Bước 3: Cài đặt & Cấu hình Frontend (Client)
 
-Mở một cửa sổ terminal mới (giữ terminal server đang chạy), di chuyển vào thư mục client: cd client
+   Mở một cửa sổ terminal mới (giữ terminal server đang chạy), di chuyển vào thư mục client: cd client
 
-Cài đặt dependencies: npm install
+   Cài đặt dependencies: npm install
 
-Khởi chạy Frontend: npm run dev
+   Khởi chạy Frontend: npm run dev
 
-Truy cập ứng dụng: Mở trình duyệt và vào địa chỉ: http://localhost:5173 (hoặc port do Vite cấp).
+   Truy cập ứng dụng: Mở trình duyệt và vào địa chỉ: http://localhost:5173 (hoặc port do Vite cấp).
 
 
 _📂 Cấu Trúc Thư Mục_
